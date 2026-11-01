@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "title": "Computer Science Assessment 2026",
+  "description": "Comprehensive evaluation covering Web Fundamentals, Algorithms, and Distributed Systems.",
+  "subject": "Computer Science",
+  "totalMarks": 18,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "marks": 1,
+      "question": "Which programming language runs natively inside modern web browsers?",
+      "options": [
+        { "id": "a", "text": "Java" },
+        { "id": "b", "text": "JavaScript" },
+        { "id": "c", "text": "Python" },
+        { "id": "d", "text": "C++" }
+      ],
+      "correctAnswer": "b"
+    },
+    {
+      "id": "q2",
+      "type": "mcq",
+      "marks": 1,
+      "question": "What does HTTP status code 401 represent?",
+      "options": [
+        { "id": "a", "text": "Forbidden" },
+        { "id": "b", "text": "Unauthorized" },
+        { "id": "c", "text": "Not Found" },
+        { "id": "d", "text": "Internal Server Error" }
+      ],
+      "correctAnswer": "b"
+    },
+    {
+      "id": "q3",
+      "type": "short_answer",
+      "marks": 2,
+      "question": "What is a closure in JavaScript, and what is its primary use case?",
+      "expectedAnswer": "A function bundled with references to its surrounding lexical environment; allows access to an outer function's scope from an inner function and data privacy."
+    },
+    {
+      "id": "q4",
+      "type": "descriptive",
+      "marks": 5,
+      "question": "Explain the key differences between SQL (Relational) and NoSQL (Document-based) databases in terms of schema, scaling, and ACID transactions.",
+      "expectedAnswer": "SQL databases are relational, structured with predefined schemas, vertically scalable, and prioritize ACID compliance. NoSQL document databases are flexible, schema-agnostic, horizontally scalable across nodes, and often prioritize BASE/eventual consistency."
+    },
+    {
+      "id": "q5",
+      "type": "long_answer",
+      "marks": 10,
+      "question": "Describe the complete lifecycle of an HTTP/HTTPS GET request from the moment a user presses Enter on the browser address bar until the webpage is rendered on the screen.",
+      "expectedAnswer": "DNS resolution (browser cache, OS cache, resolver, root/TLD/authoritative nameservers) -> TCP 3-way handshake -> TLS 1.3 cryptographic handshake -> HTTP GET request dispatched -> Server routing, controller, DB query, response generation -> HTTP 200 with HTML headers -> Browser parsing DOM tree -> CSSOM construction -> Render tree -> Layout (reflow) -> Painting and compositing -> JavaScript execution."
+    }
+  ]
+}
+
