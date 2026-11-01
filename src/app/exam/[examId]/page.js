@@ -35,6 +35,8 @@ import SendIcon from '@mui/icons-material/Send';
 import MenuIcon from '@mui/icons-material/Menu';
 import SchoolIcon from '@mui/icons-material/School';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined';
 import { useParams } from 'next/navigation';
 
 export default function StudentExaminationPage() {
@@ -58,11 +60,17 @@ export default function StudentExaminationPage() {
 
   // Student Answers Map: { [questionId]: answerValue }
   const [answers, setAnswers] = useState({});
-  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'error'
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'local' | 'error'
 
   // Timer & Expiry State (Authoritative Server Timers)
   const [expiresAt, setExpiresAt] = useState(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  // Pause State (freezes timer when window closed)
+  const [isPaused, setIsPaused] = useState(false);
+  const [resuming, setResuming] = useState(false);
+  const remainingSecondsRef = useRef(0);
+  const hasDirtyAnswersRef = useRef(false);
 
   // Autosave Debounce Ref
   const pendingSaveTimeoutRef = useRef(null);
@@ -72,6 +80,10 @@ export default function StudentExaminationPage() {
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
+
+  useEffect(() => {
+    remainingSecondsRef.current = remainingSeconds;
+  }, [remainingSeconds]);
 
   // Navigation Panel (for Mobile Drawer)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
@@ -122,15 +134,36 @@ export default function StudentExaminationPage() {
         // Active exam resumption
         setExamMeta(data.exam);
         setQuestions(data.exam.questions || []);
-        setExpiresAt(new Date(data.expiresAt));
-        setRemainingSeconds(data.remainingSeconds);
+        if (data.isPaused) {
+          setIsPaused(true);
+          setRemainingSeconds(data.remainingSeconds || 0);
+          setExpiresAt(null);
+        } else {
+          setIsPaused(false);
+          setExpiresAt(new Date(data.expiresAt));
+          setRemainingSeconds(data.remainingSeconds);
+        }
 
-        // Populate answers
+        // Populate answers from server, overlaid with any local drafts from localStorage
         const ansObj = {};
         for (const a of data.answers || []) {
           ansObj[a.questionId] = a.answer;
         }
+
+        try {
+          const localDraftStr = localStorage.getItem(`examflow_answers_${attId}`);
+          if (localDraftStr) {
+            const localDraft = JSON.parse(localDraftStr);
+            for (const [k, v] of Object.entries(localDraft)) {
+              if (v !== undefined && ansObj[k] === undefined) {
+                ansObj[k] = v;
+              }
+            }
+          }
+        } catch (e) {}
+
         setAnswers(ansObj);
+        answersRef.current = ansObj;
         lastSavedAnswersRef.current = { ...ansObj };
 
         setStage('EXAM');
@@ -211,15 +244,35 @@ export default function StudentExaminationPage() {
 
       setExamMeta(data.exam);
       setQuestions(data.exam.questions || []);
-      setExpiresAt(new Date(data.expiresAt));
-      setRemainingSeconds(data.remainingSeconds);
+      if (data.isPaused) {
+        setIsPaused(true);
+        setRemainingSeconds(data.remainingSeconds || 0);
+        setExpiresAt(null);
+      } else {
+        setIsPaused(false);
+        setExpiresAt(new Date(data.expiresAt));
+        setRemainingSeconds(data.remainingSeconds);
+      }
 
       // Populate existing answers if resumed
       const ansObj = {};
       for (const a of data.answers || []) {
         ansObj[a.questionId] = a.answer;
       }
+      try {
+        const localDraftStr = localStorage.getItem(`examflow_answers_${data.attemptId}`);
+        if (localDraftStr) {
+          const localDraft = JSON.parse(localDraftStr);
+          for (const [k, v] of Object.entries(localDraft)) {
+            if (v !== undefined && ansObj[k] === undefined) {
+              ansObj[k] = v;
+            }
+          }
+        }
+      } catch (e) {}
+
       setAnswers(ansObj);
+      answersRef.current = ansObj;
       lastSavedAnswersRef.current = { ...ansObj };
 
       setStage('EXAM');
@@ -231,9 +284,9 @@ export default function StudentExaminationPage() {
     }
   };
 
-  // Authoritative countdown timer loop
+  // Authoritative countdown timer loop: runs only when EXAM is active and NOT paused
   useEffect(() => {
-    if (stage !== 'EXAM' || !expiresAt) return;
+    if (stage !== 'EXAM' || !expiresAt || isPaused) return;
 
     const timer = setInterval(() => {
       const now = new Date();
@@ -248,71 +301,160 @@ export default function StudentExaminationPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [stage, expiresAt]);
+  }, [stage, expiresAt, isPaused]);
 
-  // Saves answers to the server
-  const persistAnswersToServer = useCallback(
-    async (answersPayload) => {
-      if (!attemptId) return;
+  // Window Close Detection: Stop timer and pause attempt ONLY when the browser window/tab is closed
+  // NOTE: Tab/Window switching (blur/visibilitychange) intentionally will NOT pause the timer.
+  useEffect(() => {
+    if (stage !== 'EXAM' || !attemptId || isPaused) return;
 
-      const itemsToSave = Object.entries(answersPayload).map(([qId, val]) => ({
-        questionId: qId,
-        answer: val,
-      }));
+    const handleWindowClose = () => {
+      const currentRemaining = remainingSecondsRef.current;
+      const latestAnswers = answersRef.current;
 
-      if (itemsToSave.length === 0) return;
+      const payload = JSON.stringify({
+        email: studentEmail.trim().toLowerCase(),
+        remainingSeconds: currentRemaining,
+        answers: Object.entries(latestAnswers).map(([qId, val]) => ({
+          questionId: qId,
+          answer: val,
+        })),
+      });
 
-      setSaveStatus('saving');
+      // Save locally first
       try {
-        const res = await fetch(`/api/attempts/${attemptId}/answers`, {
-          method: 'PATCH',
+        localStorage.setItem(`examflow_answers_${attemptId}`, JSON.stringify(latestAnswers));
+      } catch (e) {}
+
+      // Send beacon or keepalive fetch so request completes reliably as window unloads
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(`/api/attempts/${attemptId}/pause`, blob);
+      } else {
+        fetch(`/api/attempts/${attemptId}/pause`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: studentEmail.trim().toLowerCase(),
-            answers: itemsToSave,
-          }),
+          body: payload,
+          keepalive: true,
         });
-
-        if (res.status === 408) {
-          // Timer expired on server
-          handleFinalSubmit(true);
-          return;
-        }
-
-        if (!res.ok) throw new Error('Save failed');
-
-        setSaveStatus('saved');
-        lastSavedAnswersRef.current = { ...answersPayload };
-      } catch (err) {
-        setSaveStatus('error');
       }
-    },
-    [attemptId, studentEmail]
-  );
+    };
 
-  // Debounced Autosave on user input
+    window.addEventListener('pagehide', handleWindowClose);
+    window.addEventListener('beforeunload', handleWindowClose);
+
+    return () => {
+      window.removeEventListener('pagehide', handleWindowClose);
+      window.removeEventListener('beforeunload', handleWindowClose);
+    };
+  }, [stage, attemptId, isPaused, studentEmail]);
+
+  // Resumes examination countdown when student returns and clicks "Resume Examination"
+  const handleResumeExam = async () => {
+    if (!attemptId) return;
+    setResuming(true);
+    try {
+      const res = await fetch(`/api/attempts/${attemptId}/resume`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: studentEmail.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsPaused(false);
+        setRemainingSeconds(data.remainingSeconds);
+        setExpiresAt(new Date(data.expiresAt));
+      } else if (data.expired) {
+        handleFinalSubmit(true);
+      }
+    } catch (err) {
+      console.error('Failed to resume examination:', err);
+    } finally {
+      setResuming(false);
+    }
+  };
+
+  // Batched Save: flushes locally held answer updates to MongoDB in ONE consolidated request
+  const flushAnswersToDatabase = useCallback(async () => {
+    if (!attemptId || !hasDirtyAnswersRef.current) return;
+
+    const answersPayload = answersRef.current;
+    const itemsToSave = Object.entries(answersPayload).map(([qId, val]) => ({
+      questionId: qId,
+      answer: val,
+    }));
+
+    if (itemsToSave.length === 0) return;
+
+    setSaveStatus('saving');
+    try {
+      const res = await fetch(`/api/attempts/${attemptId}/answers`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: studentEmail.trim().toLowerCase(),
+          answers: itemsToSave,
+        }),
+      });
+
+      if (res.status === 408) {
+        // Timer expired on server
+        handleFinalSubmit(true);
+        return;
+      }
+
+      if (!res.ok) throw new Error('Save failed');
+
+      hasDirtyAnswersRef.current = false;
+      lastSavedAnswersRef.current = { ...answersPayload };
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error');
+    }
+  }, [attemptId, studentEmail]);
+
+  // Periodic 12-second background sync to flush dirty answers to MongoDB
+  useEffect(() => {
+    if (stage !== 'EXAM' || !attemptId) return;
+
+    const syncInterval = setInterval(() => {
+      if (hasDirtyAnswersRef.current) {
+        flushAnswersToDatabase();
+      }
+    }, 12000); // Batched periodic sync every 12s
+
+    return () => clearInterval(syncInterval);
+  }, [stage, attemptId, flushAnswersToDatabase]);
+
+  // Local-first answer change: stores in localStorage immediately, batches DB calls
   const handleAnswerChange = (questionId, value) => {
-    if (answersRef.current[questionId] === value) return; // Prevent redundant double-trigger
+    if (answersRef.current[questionId] === value) return; // Prevent duplicate work
     const updated = { ...answersRef.current, [questionId]: value };
     answersRef.current = updated;
     setAnswers(updated);
-    setSaveStatus('saving');
+    hasDirtyAnswersRef.current = true;
+    setSaveStatus('local');
 
+    // Instantly persist to localStorage (0ms latency, zero database hits)
+    try {
+      if (attemptId) {
+        localStorage.setItem(`examflow_answers_${attemptId}`, JSON.stringify(updated));
+      }
+    } catch (e) {}
+
+    // Clear previous pending debounce timeout
     if (pendingSaveTimeoutRef.current) {
       clearTimeout(pendingSaveTimeoutRef.current);
     }
 
+    // Debounce: save to database after 6 seconds of idle
     pendingSaveTimeoutRef.current = setTimeout(() => {
-      persistAnswersToServer(updated);
-    }, 1200); // 1.2s debounce
+      flushAnswersToDatabase();
+    }, 6000);
   };
 
-  // Save immediately when navigating between questions
+  // Navigates between questions without triggering extra database requests
   const handleNavigateQuestion = (newIndex) => {
-    if (pendingSaveTimeoutRef.current) {
-      clearTimeout(pendingSaveTimeoutRef.current);
-    }
-    persistAnswersToServer(answersRef.current);
     setCurrentIndex(newIndex);
     setNavDrawerOpen(false);
   };
@@ -327,7 +469,7 @@ export default function StudentExaminationPage() {
     if (pendingSaveTimeoutRef.current) {
       clearTimeout(pendingSaveTimeoutRef.current);
     }
-    await persistAnswersToServer(answersRef.current);
+    await flushAnswersToDatabase();
 
     try {
       const res = await fetch(`/api/attempts/${attemptId}/submit`, {
@@ -419,22 +561,28 @@ export default function StudentExaminationPage() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {/* Autosave Indicator */}
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.8 }}>
+              {saveStatus === 'local' && (
+                <>
+                  <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: '#5f6368' }} />
+                  <Typography variant="caption" sx={{ color: '#5f6368' }}>Saved locally</Typography>
+                </>
+              )}
               {saveStatus === 'saving' && (
                 <>
                   <CircularProgress size={14} sx={{ color: '#1a73e8' }} />
-                  <Typography variant="caption" sx={{ color: '#5f6368' }}>Saving answers...</Typography>
+                  <Typography variant="caption" sx={{ color: '#1a73e8' }}>Syncing to database...</Typography>
                 </>
               )}
               {saveStatus === 'saved' && (
                 <>
                   <CloudDoneOutlinedIcon sx={{ fontSize: 16, color: '#137333' }} />
-                  <Typography variant="caption" sx={{ color: '#137333', fontWeight: 500 }}>Saved to server</Typography>
+                  <Typography variant="caption" sx={{ color: '#137333', fontWeight: 500 }}>Saved in database</Typography>
                 </>
               )}
               {saveStatus === 'error' && (
                 <>
                   <ErrorOutlinedIcon sx={{ fontSize: 16, color: '#d93025' }} />
-                  <Typography variant="caption" sx={{ color: '#d93025' }}>Network retry pending</Typography>
+                  <Typography variant="caption" sx={{ color: '#d93025' }}>Offline - Saved locally</Typography>
                 </>
               )}
             </Box>
@@ -448,17 +596,37 @@ export default function StudentExaminationPage() {
                 px: 2,
                 py: 0.8,
                 borderRadius: '20px',
-                backgroundColor: remainingSeconds < 300 ? '#fce8e6' : '#f1f3f4',
-                color: remainingSeconds < 300 ? '#c5221f' : '#202124',
-                border: remainingSeconds < 300 ? '1px solid #d93025' : '1px solid #dadce0',
-                transition: 'background-color 0.3s ease',
+                backgroundColor: isPaused ? '#fef7e0' : remainingSeconds < 300 ? '#fce8e6' : '#f1f3f4',
+                color: isPaused ? '#b06000' : remainingSeconds < 300 ? '#c5221f' : '#202124',
+                border: isPaused ? '1px solid #f9ab00' : remainingSeconds < 300 ? '1px solid #d93025' : '1px solid #dadce0',
+                transition: 'all 0.3s ease',
               }}
             >
-              <TimerOutlinedIcon sx={{ fontSize: 18 }} />
+              {isPaused ? <PauseCircleOutlinedIcon sx={{ fontSize: 18 }} /> : <TimerOutlinedIcon sx={{ fontSize: 18 }} />}
               <Typography variant="subtitle2" sx={{ fontWeight: 700, fontFamily: 'monospace', letterSpacing: 0.5 }}>
-                {formatTimer(remainingSeconds)}
+                {isPaused ? `${formatTimer(remainingSeconds)} (Paused)` : formatTimer(remainingSeconds)}
               </Typography>
             </Box>
+
+            {isPaused && (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleResumeExam}
+                disabled={resuming}
+                startIcon={<PlayArrowIcon fontSize="small" />}
+                sx={{
+                  display: { xs: 'none', sm: 'inline-flex' },
+                  backgroundColor: '#137333',
+                  '&:hover': { backgroundColor: '#0d652d' },
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                }}
+              >
+                {resuming ? 'Resuming...' : 'Resume'}
+              </Button>
+            )}
 
             {/* Mobile Question Palette Drawer Toggle */}
             <IconButton
@@ -640,9 +808,60 @@ export default function StudentExaminationPage() {
 
         {/* STAGE 3: ACTIVE DISTRACTION-FREE EXAMINATION INTERFACE */}
         {stage === 'EXAM' && currentQuestion && (
-          <Box sx={{ width: '100%', maxWidth: 1200, display: 'flex', gap: 3 }}>
-            {/* Left Main Question Pane */}
-            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Box sx={{ width: '100%', maxWidth: 1200, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Paused Notification Banner */}
+            {isPaused && (
+              <Paper
+                elevation={1}
+                sx={{
+                  p: 2.5,
+                  backgroundColor: '#fef7e0',
+                  border: '1px solid #f9ab00',
+                  borderRadius: 2,
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  justifyContent: 'space-between',
+                  gap: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <PauseCircleOutlinedIcon sx={{ fontSize: 36, color: '#b06000' }} />
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#7a4100' }}>
+                      Examination Timer Paused
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#5f6368' }}>
+                      Your exam was paused when you closed the window. Remaining time:{' '}
+                      <Box component="strong" sx={{ color: '#202124', fontFamily: 'monospace' }}>
+                        {formatTimer(remainingSeconds)}
+                      </Box>
+                      . Click &quot;Resume Examination&quot; to continue.
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={handleResumeExam}
+                  disabled={resuming}
+                  startIcon={<PlayArrowIcon />}
+                  sx={{
+                    backgroundColor: '#137333',
+                    '&:hover': { backgroundColor: '#0d652d' },
+                    whiteSpace: 'nowrap',
+                    fontWeight: 600,
+                    px: 3,
+                  }}
+                >
+                  {resuming ? 'Resuming...' : 'Resume Examination'}
+                </Button>
+              </Paper>
+            )}
+
+            <Box sx={{ width: '100%', display: 'flex', gap: 3 }}>
+              {/* Left Main Question Pane */}
+              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
               <Card sx={{ border: '1px solid #dadce0', borderRadius: 2, mb: 3 }}>
                 <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
                   {/* Question Header */}
@@ -872,6 +1091,7 @@ export default function StudentExaminationPage() {
                 </Button>
               </Box>
             </Drawer>
+            </Box>
           </Box>
         )}
 

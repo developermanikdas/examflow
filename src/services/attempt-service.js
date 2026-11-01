@@ -47,7 +47,24 @@ export async function verifyStudentAndCheckEligibility(examPublicId, { name, ema
   const activeAttempt = existingAttempts.find((a) => a.status === 'in_progress');
   if (activeAttempt) {
     const now = new Date();
-    if (activeAttempt.expiresAt <= now) {
+    if (activeAttempt.isPaused) {
+      // Exam was paused when window was closed - timer is stopped
+      return {
+        eligible: true,
+        canResume: true,
+        isPaused: true,
+        activeAttemptId: activeAttempt._id.toString(),
+        exam: {
+          publicId: exam.publicId,
+          title: exam.title,
+          description: exam.description,
+          subject: exam.subject,
+          totalMarks: exam.totalMarks,
+          questionCount: exam.questions.length,
+          durationMinutes: exam.durationMinutes,
+        },
+      };
+    } else if (activeAttempt.expiresAt <= now) {
       // Auto-submit expired active attempt
       await submitAttempt(activeAttempt._id, normalizedEmail, { isAutoSubmit: true });
     } else {
@@ -55,6 +72,7 @@ export async function verifyStudentAndCheckEligibility(examPublicId, { name, ema
       return {
         eligible: true,
         canResume: true,
+        isPaused: false,
         activeAttemptId: activeAttempt._id.toString(),
         exam: {
           publicId: exam.publicId,
@@ -125,11 +143,25 @@ export async function startAttempt(examPublicId, { name, email, ip, userAgent })
   const now = new Date();
 
   if (activeAttempt) {
-    if (activeAttempt.expiresAt > now) {
+    if (activeAttempt.isPaused) {
+      // Return paused attempt state with timer stopped
+      return {
+        resumed: true,
+        isPaused: true,
+        attemptId: activeAttempt._id.toString(),
+        startedAt: activeAttempt.startedAt,
+        expiresAt: activeAttempt.expiresAt,
+        durationSeconds: activeAttempt.durationSeconds,
+        remainingSeconds: activeAttempt.remainingSeconds != null ? activeAttempt.remainingSeconds : activeAttempt.durationSeconds,
+        answers: activeAttempt.answers || [],
+        exam: exam.toStudentView(),
+      };
+    } else if (activeAttempt.expiresAt > now) {
       // Resume existing active attempt
       const remainingSeconds = Math.max(0, Math.floor((activeAttempt.expiresAt.getTime() - now.getTime()) / 1000));
       return {
         resumed: true,
+        isPaused: false,
         attemptId: activeAttempt._id.toString(),
         startedAt: activeAttempt.startedAt,
         expiresAt: activeAttempt.expiresAt,
@@ -170,6 +202,8 @@ export async function startAttempt(examPublicId, { name, email, ip, userAgent })
     startedAt,
     expiresAt,
     durationSeconds: exam.durationSeconds,
+    remainingSeconds: exam.durationSeconds,
+    isPaused: false,
     answers: [],
     questionEvaluations: [],
     ipAddress: ip,
@@ -240,6 +274,22 @@ export async function getAttemptSession(attemptId, studentEmail) {
 
   const now = new Date();
 
+  // If still in progress and paused, timer is stopped
+  if (attempt.status === 'in_progress' && attempt.isPaused) {
+    return {
+      attemptId: attempt._id.toString(),
+      status: attempt.status,
+      isPaused: true,
+      startedAt: attempt.startedAt,
+      expiresAt: attempt.expiresAt,
+      submittedAt: attempt.submittedAt,
+      remainingSeconds: attempt.remainingSeconds != null ? attempt.remainingSeconds : 0,
+      answers: attempt.answers || [],
+      exam: exam.toStudentView(),
+      evaluation: null,
+    };
+  }
+
   // If still in progress but server expiration time has passed, auto-submit
   if (attempt.status === 'in_progress' && attempt.expiresAt <= now) {
     const submitResult = await submitAttempt(attempt._id, attempt.studentEmail, { isAutoSubmit: true });
@@ -260,6 +310,7 @@ export async function getAttemptSession(attemptId, studentEmail) {
   return {
     attemptId: attempt._id.toString(),
     status: attempt.status,
+    isPaused: false,
     startedAt: attempt.startedAt,
     expiresAt: attempt.expiresAt,
     submittedAt: attempt.submittedAt,
@@ -343,6 +394,139 @@ export async function saveAnswers(attemptId, answersArray, studentEmail) {
     success: true,
     savedCount: answersArray.length,
     timestamp: now,
+  };
+}
+
+/**
+ * Pauses an active examination attempt when the student's browser window is closed.
+ * Freezes the remaining seconds and saves any pending answers.
+ */
+export async function pauseAttempt(attemptId, studentEmail, { remainingSeconds, answers } = {}) {
+  await connectToDatabase();
+
+  if (!mongoose.isValidObjectId(attemptId)) {
+    const err = new Error('Attempt not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const attempt = await Attempt.findById(attemptId);
+  if (!attempt) {
+    const err = new Error('Attempt not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (studentEmail && attempt.studentEmail.toLowerCase() !== studentEmail.toLowerCase()) {
+    const err = new Error('Unauthorized');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (attempt.status !== 'in_progress') {
+    return { success: true, message: 'Attempt is already finished', status: attempt.status };
+  }
+
+  const now = new Date();
+  let calculatedRemaining = remainingSeconds;
+
+  if (calculatedRemaining == null) {
+    calculatedRemaining = Math.max(0, Math.floor((attempt.expiresAt.getTime() - now.getTime()) / 1000));
+  } else {
+    // Upper-bound by the maximum theoretical duration to avoid client manipulation
+    const maxTheoretical = attempt.durationSeconds || 7200;
+    calculatedRemaining = Math.min(Math.max(0, Math.floor(Number(calculatedRemaining))), maxTheoretical);
+  }
+
+  attempt.isPaused = true;
+  attempt.remainingSeconds = calculatedRemaining;
+  attempt.pausedAt = now;
+
+  // Persist answers if passed along with beacon/keepalive
+  if (Array.isArray(answers) && answers.length > 0) {
+    const existingAnswersMap = new Map();
+    for (const a of attempt.answers || []) {
+      existingAnswersMap.set(a.questionId, a);
+    }
+    for (const incoming of answers) {
+      if (incoming && incoming.questionId) {
+        existingAnswersMap.set(incoming.questionId, {
+          questionId: incoming.questionId,
+          answer: incoming.answer !== undefined ? incoming.answer : '',
+          savedAt: now,
+        });
+      }
+    }
+    attempt.answers = Array.from(existingAnswersMap.values());
+  }
+
+  await attempt.save();
+
+  return {
+    success: true,
+    isPaused: true,
+    remainingSeconds: attempt.remainingSeconds,
+    pausedAt: attempt.pausedAt,
+  };
+}
+
+/**
+ * Resumes a paused examination attempt when the student re-opens the examination.
+ * Recalculates expiresAt based on the saved remaining seconds from this instant.
+ */
+export async function resumeAttempt(attemptId, studentEmail) {
+  await connectToDatabase();
+
+  if (!mongoose.isValidObjectId(attemptId)) {
+    const err = new Error('Attempt not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const attempt = await Attempt.findById(attemptId);
+  if (!attempt) {
+    const err = new Error('Attempt not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (studentEmail && attempt.studentEmail.toLowerCase() !== studentEmail.toLowerCase()) {
+    const err = new Error('Unauthorized');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (attempt.status !== 'in_progress') {
+    return { success: false, message: 'Attempt is not in progress', status: attempt.status };
+  }
+
+  const now = new Date();
+  const remaining =
+    attempt.remainingSeconds != null
+      ? attempt.remainingSeconds
+      : Math.max(0, Math.floor((attempt.expiresAt.getTime() - now.getTime()) / 1000));
+
+  if (remaining <= 0) {
+    const submitResult = await submitAttempt(attempt._id, attempt.studentEmail, { isAutoSubmit: true });
+    return {
+      success: false,
+      expired: true,
+      status: 'auto_submitted',
+      attempt: submitResult.attempt,
+    };
+  }
+
+  // Extend expiresAt by the frozen remaining seconds starting from right now
+  attempt.isPaused = false;
+  attempt.expiresAt = new Date(now.getTime() + remaining * 1000);
+  attempt.resumedAt = now;
+  await attempt.save();
+
+  return {
+    success: true,
+    isPaused: false,
+    remainingSeconds: remaining,
+    expiresAt: attempt.expiresAt,
   };
 }
 

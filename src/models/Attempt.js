@@ -78,6 +78,21 @@ const AttemptSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    isPaused: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    remainingSeconds: {
+      type: Number,
+      default: null,
+    },
+    pausedAt: {
+      type: Date,
+    },
+    resumedAt: {
+      type: Date,
+    },
     answers: [StudentAnswerSchema],
     questionEvaluations: [QuestionEvaluationSchema],
     totalMarks: {
