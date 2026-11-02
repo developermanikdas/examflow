@@ -150,7 +150,9 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }) {
             boxSizing: 'border-box',
             borderRight: '1px solid #dadce0',
             top: '64px',
-            height: 'calc(100% - 64px)',
+            height: 'calc(100vh - 64px)',
+            position: 'fixed',
+            overflowY: 'auto',
           },
         }}
         open

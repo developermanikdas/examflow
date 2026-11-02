@@ -29,8 +29,12 @@ export default function AdminNavbar({ onToggleSidebar, admin }) {
 
   return (
     <AppBar
-      position="sticky"
+      position="fixed"
+      elevation={0}
       sx={{
+        top: 0,
+        left: 0,
+        right: 0,
         zIndex: (theme) => theme.zIndex.drawer + 1,
         backgroundColor: '#ffffff',
         borderBottom: '1px solid #dadce0',

@@ -70,7 +70,7 @@ export default function AdminLayout({ children }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       <AdminNavbar onToggleSidebar={handleToggleSidebar} admin={admin} />
-      <Box sx={{ display: 'flex', flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', flexGrow: 1, pt: '64px' }}>
         <AdminSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
         <Box
           component="main"
@@ -79,6 +79,7 @@ export default function AdminLayout({ children }) {
             p: { xs: 2, sm: 3, md: 4 },
             maxWidth: { xs: '100%', md: 'calc(100% - 250px)' },
             width: '100%',
+            minHeight: 'calc(100vh - 64px)',
           }}
         >
           {children}
