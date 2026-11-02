@@ -88,16 +88,47 @@ export async function verifyStudentAndCheckEligibility(examPublicId, { name, ema
   }
 
   // Count completed/submitted attempts
-  const completedAttemptsCount = existingAttempts.filter((a) =>
-    ['submitted', 'auto_submitted', 'evaluated'].includes(a.status)
-  ).length;
+  const completedAttempts = existingAttempts
+    .filter((a) => ['submitted', 'auto_submitted', 'evaluated'].includes(a.status))
+    .sort((a, b) => new Date(b.submittedAt || b.createdAt) - new Date(a.submittedAt || a.createdAt));
 
-  if (completedAttemptsCount >= exam.maxAttempts) {
-    const err = new Error(
-      `You have reached the maximum allowed attempts (${exam.maxAttempts}) for this examination.`
-    );
-    err.statusCode = 403;
-    throw err;
+  const completedAttemptsCount = completedAttempts.length;
+
+  if (completedAttemptsCount >= exam.maxAttempts && completedAttempts.length > 0) {
+    const latest = completedAttempts[0];
+    const answersMap = {};
+    for (const ans of latest.answers || []) {
+      answersMap[ans.questionId] = ans.answer;
+    }
+
+    // Student has completed the examination: return full evaluation report review
+    return {
+      eligible: false,
+      isCompleted: true,
+      hasReview: true,
+      completedAttempt: {
+        attemptId: latest._id.toString(),
+        studentName: latest.studentName,
+        studentEmail: latest.studentEmail,
+        obtainedMarks: latest.obtainedMarks,
+        totalMarks: latest.totalMarks,
+        percentage: latest.percentage,
+        evaluationStatus: latest.evaluationStatus,
+        submittedAt: latest.submittedAt,
+        questionEvaluations: latest.questionEvaluations || [],
+        answers: answersMap,
+      },
+      exam: {
+        publicId: exam.publicId,
+        title: exam.title,
+        description: exam.description,
+        subject: exam.subject,
+        totalMarks: exam.totalMarks,
+        questionCount: exam.questions.length,
+        durationMinutes: exam.durationMinutes,
+        questions: exam.questions,
+      },
+    };
   }
 
   return {
@@ -325,6 +356,7 @@ export async function getAttemptSession(attemptId, studentEmail) {
           obtainedMarks: attempt.obtainedMarks,
           percentage: attempt.percentage,
           evaluationStatus: attempt.evaluationStatus,
+          questionEvaluations: attempt.questionEvaluations || [],
         }
       : null,
   };

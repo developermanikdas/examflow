@@ -119,6 +119,13 @@ export default function StudentExaminationPage() {
 
       if (data.success) {
         if (['submitted', 'auto_submitted', 'evaluated'].includes(data.status)) {
+          setExamMeta(data.exam);
+          setQuestions(data.exam?.questions || []);
+          const ansObj = {};
+          for (const a of data.answers || []) {
+            ansObj[a.questionId] = a.answer;
+          }
+          setAnswers(ansObj);
           setSubmissionResult({
             totalMarks: data.evaluation?.totalMarks || 0,
             obtainedMarks: data.evaluation?.obtainedMarks || 0,
@@ -126,6 +133,7 @@ export default function StudentExaminationPage() {
             evaluationStatus: data.evaluation?.evaluationStatus || 'pending',
             status: data.status,
             submittedAt: data.submittedAt,
+            questionEvaluations: data.evaluation?.questionEvaluations || [],
           });
           setStage('SUBMITTED');
           return;
@@ -202,6 +210,25 @@ export default function StudentExaminationPage() {
 
       setExamMeta(data.exam);
 
+      // If candidate has completed their attempt(s), immediately present the full AI Evaluation Report
+      if (data.hasReview && data.completedAttempt) {
+        setQuestions(data.exam?.questions || []);
+        setAnswers(data.completedAttempt.answers || {});
+        setStudentName(data.completedAttempt.studentName || studentName);
+        setSubmissionResult({
+          attemptId: data.completedAttempt.attemptId,
+          studentName: data.completedAttempt.studentName,
+          obtainedMarks: data.completedAttempt.obtainedMarks,
+          totalMarks: data.completedAttempt.totalMarks,
+          percentage: data.completedAttempt.percentage,
+          evaluationStatus: data.completedAttempt.evaluationStatus,
+          submittedAt: data.completedAttempt.submittedAt,
+          questionEvaluations: data.completedAttempt.questionEvaluations || [],
+        });
+        setStage('SUBMITTED');
+        return;
+      }
+
       // Save credentials in session storage for reload recovery
       sessionStorage.setItem(`examflow_email_${examId}`, studentEmail.trim().toLowerCase());
       sessionStorage.setItem(`examflow_name_${examId}`, studentName.trim());
@@ -214,6 +241,51 @@ export default function StudentExaminationPage() {
       } else {
         setStage('INSTRUCTIONS');
       }
+    } catch (err) {
+      setVerifyError(err.message);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // Dedicated function to fetch evaluation feedback & review for this student
+  const handleFetchReview = async () => {
+    if (!studentEmail.trim()) {
+      setVerifyError('Please enter your email address to look up your evaluation review.');
+      return;
+    }
+    setVerifying(true);
+    setVerifyError('');
+    try {
+      const res = await fetch(`/api/exam/${examId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: studentEmail.trim().toLowerCase(),
+          pin: pin.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to retrieve assessment review.');
+      }
+
+      setExamMeta(data.exam);
+      setQuestions(data.exam?.questions || []);
+      setAnswers(data.completedAttempt.answers || {});
+      setStudentName(data.completedAttempt.studentName || studentName);
+      setSubmissionResult({
+        attemptId: data.completedAttempt.attemptId,
+        studentName: data.completedAttempt.studentName,
+        obtainedMarks: data.completedAttempt.obtainedMarks,
+        totalMarks: data.completedAttempt.totalMarks,
+        percentage: data.completedAttempt.percentage,
+        evaluationStatus: data.completedAttempt.evaluationStatus,
+        submittedAt: data.completedAttempt.submittedAt,
+        questionEvaluations: data.completedAttempt.questionEvaluations || [],
+      });
+      setStage('SUBMITTED');
     } catch (err) {
       setVerifyError(err.message);
     } finally {
@@ -729,6 +801,29 @@ export default function StudentExaminationPage() {
                 >
                   {verifying ? 'Verifying...' : 'Verify & Continue'}
                 </Button>
+
+                <Divider sx={{ my: 2.5 }}>
+                  <Typography variant="caption" sx={{ color: '#80868b' }}>ALREADY TOOK THE EXAM?</Typography>
+                </Divider>
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleFetchReview}
+                  disabled={verifying}
+                  sx={{
+                    py: 1.1,
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    borderColor: '#dadce0',
+                    color: '#1a73e8',
+                    textTransform: 'none',
+                    backgroundColor: '#ffffff',
+                    '&:hover': { backgroundColor: '#f8fafd', borderColor: '#1a73e8' },
+                  }}
+                >
+                  🔍 View My Previous Results & AI Feedback
+                </Button>
               </Box>
             </CardContent>
           </Card>
@@ -1219,7 +1314,7 @@ export default function StudentExaminationPage() {
                                 />
                               </Box>
                               <Typography variant="body2" sx={{ color: '#3c4043', mb: 1.5, fontWeight: 500 }}>
-                                {q.text}
+                                {q.question || q.text}
                               </Typography>
 
                               {studentAns ? (
@@ -1256,8 +1351,28 @@ export default function StudentExaminationPage() {
                 </Paper>
               )}
 
-              <Typography variant="caption" sx={{ color: '#80868b' }}>
-                You may now safely close this browser window.
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3, mb: 1, flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => window.print()}
+                  sx={{ borderColor: '#dadce0', color: '#1a73e8', fontWeight: 600, borderRadius: 2 }}
+                >
+                  🖨️ Print / Save Report
+                </Button>
+                <Button
+                  variant="text"
+                  onClick={() => {
+                    setStage('VERIFY');
+                    setSubmissionResult(null);
+                  }}
+                  sx={{ color: '#5f6368', fontWeight: 600 }}
+                >
+                  ← Return to Exam Entry
+                </Button>
+              </Box>
+
+              <Typography variant="caption" sx={{ color: '#80868b', display: 'block', mt: 1 }}>
+                You may now safely close this browser window or return anytime with your email to review your feedback.
               </Typography>
             </CardContent>
           </Card>
