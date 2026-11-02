@@ -315,6 +315,8 @@ export async function getAttemptSession(attemptId, studentEmail) {
     expiresAt: attempt.expiresAt,
     submittedAt: attempt.submittedAt,
     remainingSeconds,
+    currentQuestionIndex: attempt.currentQuestionIndex || 0,
+    lastActiveAt: attempt.lastActiveAt || attempt.startedAt,
     answers: attempt.answers || [],
     exam: exam.toStudentView(),
     evaluation: ['submitted', 'auto_submitted', 'evaluated'].includes(attempt.status)
@@ -388,6 +390,7 @@ export async function saveAnswers(attemptId, answersArray, studentEmail) {
   }
 
   attempt.answers = Array.from(existingAnswersMap.values());
+  attempt.lastActiveAt = now;
   await attempt.save();
 
   return {
@@ -528,5 +531,24 @@ export async function resumeAttempt(attemptId, studentEmail) {
     remainingSeconds: remaining,
     expiresAt: attempt.expiresAt,
   };
+}
+
+/**
+ * Updates live student progress, current question index, and heartbeat timestamp.
+ */
+export async function updateStudentActivity(attemptId, studentEmail, { currentQuestionIndex } = {}) {
+  await connectToDatabase();
+
+  if (!mongoose.isValidObjectId(attemptId)) {
+    return { success: false, error: 'Invalid attempt ID' };
+  }
+
+  const update = { lastActiveAt: new Date() };
+  if (currentQuestionIndex !== undefined && !isNaN(currentQuestionIndex)) {
+    update.currentQuestionIndex = Number(currentQuestionIndex);
+  }
+
+  await Attempt.findByIdAndUpdate(attemptId, update);
+  return { success: true, lastActiveAt: update.lastActiveAt };
 }
 

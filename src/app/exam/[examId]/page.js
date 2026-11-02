@@ -459,6 +459,20 @@ export default function StudentExaminationPage() {
     setNavDrawerOpen(false);
   };
 
+  // Live Activity & Position tracking: sends heartbeat of current question student is writing/viewing
+  useEffect(() => {
+    if (stage !== 'EXAM' || !attemptId) return;
+
+    fetch(`/api/attempts/${attemptId}/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: studentEmail.trim().toLowerCase(),
+        currentQuestionIndex: currentIndex,
+      }),
+    }).catch(() => {});
+  }, [stage, attemptId, currentIndex, studentEmail]);
+
   // Step 3: Final Examination Submission
   const handleFinalSubmit = async (isAuto = false) => {
     if (submitting) return;
@@ -1099,12 +1113,13 @@ export default function StudentExaminationPage() {
         {stage === 'SUBMITTED' && (
           <Card
             sx={{
-              maxWidth: 600,
+              maxWidth: 740,
               width: '100%',
               borderRadius: 3,
               border: '1px solid #dadce0',
-              boxShadow: '0 1px 3px 0 rgba(60,64,67,0.1)',
-              my: 'auto',
+              boxShadow: '0 2px 10px 0 rgba(60,64,67,0.1)',
+              my: 4,
+              mx: 'auto',
               textAlign: 'center',
             }}
           >
@@ -1129,8 +1144,8 @@ export default function StudentExaminationPage() {
               <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124', mb: 1 }}>
                 Examination Successfully Submitted!
               </Typography>
-              <Typography variant="body2" sx={{ color: '#5f6368', mb: 4 }}>
-                Thank you, <strong>{studentName}</strong>. Your attempt has been registered and verified by the server.
+              <Typography variant="body2" sx={{ color: '#5f6368', mb: 3 }}>
+                Thank you, <strong>{studentName}</strong>. Your attempt has been registered, auto-evaluated, and verified.
               </Typography>
 
               {/* Result Summary Box */}
@@ -1139,26 +1154,27 @@ export default function StudentExaminationPage() {
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Typography variant="caption" sx={{ color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        {questions.some((q) => q.type === 'mcq') ? 'MCQ / Auto Score' : 'Total Examination Marks'}
+                        Total Score Obtained
                       </Typography>
-                      <Typography variant="h5" sx={{ fontWeight: 700, color: '#1a73e8' }}>
-                        {questions.some((q) => q.type === 'mcq')
-                          ? `${submissionResult.obtainedMarks} / ${submissionResult.totalMarks}`
-                          : `${submissionResult.totalMarks} Marks`}
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a73e8', mt: 0.5 }}>
+                        {submissionResult.obtainedMarks} / {submissionResult.totalMarks}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 600 }}>
+                        {submissionResult.percentage}% Score
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
                       <Typography variant="caption" sx={{ color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Evaluation Status
                       </Typography>
-                      <Box sx={{ mt: 0.5 }}>
+                      <Box sx={{ mt: 1 }}>
                         <Chip
                           label={
                             submissionResult.evaluationStatus === 'fully_evaluated'
-                              ? 'Fully Evaluated'
+                              ? 'Evaluated by AI'
                               : 'Written Review Pending'
                           }
-                          size="small"
+                          size="medium"
                           color={submissionResult.evaluationStatus === 'fully_evaluated' ? 'success' : 'warning'}
                           sx={{ fontWeight: 600 }}
                         />
@@ -1166,12 +1182,76 @@ export default function StudentExaminationPage() {
                     </Grid>
                   </Grid>
 
-                  {submissionResult.evaluationStatus !== 'fully_evaluated' && (
-                    <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 2 }}>
-                      {questions.some((q) => q.type === 'mcq')
-                        ? '* Your MCQ answers were automatically evaluated. Your written responses have been sent to the instructor for manual grading.'
-                        : '* All questions in this assessment are written responses and have been securely queued for instructor manual grading.'}
-                    </Typography>
+                  {/* Question Breakdown Report */}
+                  {submissionResult?.questionEvaluations && submissionResult.questionEvaluations.length > 0 && (
+                    <Box sx={{ mt: 4, textAlign: 'left' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#202124', mb: 2 }}>
+                        Question-by-Question AI Evaluation Breakdown:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {questions.map((q, idx) => {
+                          const evalItem = submissionResult.questionEvaluations.find((e) => e.questionId === q.id);
+                          const studentAns = answers[q.id];
+                          const marksAwarded = evalItem ? evalItem.marksAwarded : 0;
+                          const maxMarks = q.marks || 1;
+                          const isFull = marksAwarded === maxMarks;
+
+                          return (
+                            <Paper
+                              key={q.id}
+                              variant="outlined"
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                borderColor: isFull ? '#a8dab5' : marksAwarded > 0 ? '#ffe082' : '#dadce0',
+                                backgroundColor: isFull ? '#fbfefc' : '#ffffff',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124' }}>
+                                  Q{idx + 1}: {q.type === 'mcq' ? 'Multiple Choice' : 'Written Response'}
+                                </Typography>
+                                <Chip
+                                  label={`${marksAwarded} / ${maxMarks} marks`}
+                                  size="small"
+                                  color={isFull ? 'success' : marksAwarded > 0 ? 'warning' : 'default'}
+                                  sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                                />
+                              </Box>
+                              <Typography variant="body2" sx={{ color: '#3c4043', mb: 1.5, fontWeight: 500 }}>
+                                {q.text}
+                              </Typography>
+
+                              {studentAns ? (
+                                <Box sx={{ mb: 1.5, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1.5, border: '1px solid #edf2f7' }}>
+                                  <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', fontWeight: 600 }}>
+                                    Your Submitted Response:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#202124' }}>
+                                    {typeof studentAns === 'string' ? studentAns : JSON.stringify(studentAns)}
+                                  </Typography>
+                                </Box>
+                              ) : (
+                                <Typography variant="caption" sx={{ color: '#d93025', fontStyle: 'italic', display: 'block', mb: 1 }}>
+                                  Not Answered
+                                </Typography>
+                              )}
+
+                              {evalItem?.evaluatorFeedback && (
+                                <Box sx={{ p: 1.5, backgroundColor: '#e8f0fe', borderRadius: 1.5, border: '1px solid #d2e3fc' }}>
+                                  <Typography variant="caption" sx={{ color: '#1a73e8', display: 'block', fontWeight: 700 }}>
+                                    🤖 AI Assessment & Feedback:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#174ea6' }}>
+                                    {evalItem.evaluatorFeedback}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Paper>
+                          );
+                        })}
+                      </Box>
+                    </Box>
                   )}
                 </Paper>
               )}

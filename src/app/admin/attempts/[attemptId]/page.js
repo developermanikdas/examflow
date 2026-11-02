@@ -67,6 +67,10 @@ export default function AttemptDetailsAndGradingPage() {
 
   useEffect(() => {
     fetchAttempt();
+    const interval = setInterval(() => {
+      fetchAttempt();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [attemptId]);
 
   const handleGradeChange = (questionId, field, value) => {
@@ -273,14 +277,97 @@ export default function AttemptDetailsAndGradingPage() {
             </Grid>
 
             <Grid item xs={6} sm={3}>
-              <Typography variant="caption" sx={{ color: '#5f6368' }}>SUBMISSION TIME</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.5 }}>
-                {attempt.submittedAt
-                  ? new Date(attempt.submittedAt).toLocaleString(undefined, {
+              <Typography variant="caption" sx={{ color: '#5f6368' }}>EXAM STARTED AT</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5, color: '#202124' }}>
+                {attempt.startedAt
+                  ? new Date(attempt.startedAt).toLocaleString(undefined, {
                       dateStyle: 'short',
                       timeStyle: 'medium',
                     })
-                  : 'In Progress'}
+                  : '—'}
+              </Typography>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Live Proctoring & Activity Tracking Card */}
+      <Card
+        sx={{
+          mb: 4,
+          borderRadius: 2,
+          border: attempt.status === 'in_progress' ? '2px solid #137333' : '1px solid #dadce0',
+          backgroundColor: attempt.status === 'in_progress' ? '#fbfdfc' : '#ffffff',
+          boxShadow: attempt.status === 'in_progress' ? '0 2px 10px 0 rgba(19,115,51,0.1)' : '0 1px 3px 0 rgba(60,64,67,0.06)',
+        }}
+      >
+        <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor: attempt.status === 'in_progress' ? (attempt.isPaused ? '#e37400' : '#137333') : '#5f6368',
+                }}
+              />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#202124' }}>
+                {attempt.status === 'in_progress'
+                  ? 'Live Candidate Activity & Proctoring'
+                  : 'Candidate Session Timeline'}
+              </Typography>
+            </Box>
+
+            {attempt.status === 'in_progress' && (
+              <Chip
+                label={attempt.isPaused ? '⏸️ Window Closed (Timer Paused)' : '🟢 Active Right Now'}
+                size="small"
+                sx={{
+                  backgroundColor: attempt.isPaused ? '#feefe3' : '#e6f4ea',
+                  color: attempt.isPaused ? '#b06000' : '#137333',
+                  fontWeight: 700,
+                }}
+              />
+            )}
+          </Box>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 600 }}>
+                EXACT START TIME
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#202124', mt: 0.5 }}>
+                {attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : 'Not started yet'}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 600 }}>
+                CURRENT POSITION / QUESTION WRITING
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#1a73e8', mt: 0.5 }}>
+                {attempt.status === 'in_progress'
+                  ? `Writing Question ${(attempt.currentQuestionIndex ?? 0) + 1} of ${questions.length}`
+                  : `Completed all ${questions.length} questions`}
+              </Typography>
+              {attempt.status === 'in_progress' && questions[attempt.currentQuestionIndex ?? 0] && (
+                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 0.3 }}>
+                  &ldquo;{questions[attempt.currentQuestionIndex ?? 0].text?.slice(0, 60)}...&rdquo;
+                </Typography>
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 600 }}>
+                LAST HEARTBEAT / ACTIVITY
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 500, color: '#3c4043', mt: 0.5 }}>
+                {attempt.lastActiveAt
+                  ? new Date(attempt.lastActiveAt).toLocaleTimeString()
+                  : attempt.submittedAt
+                  ? new Date(attempt.submittedAt).toLocaleTimeString()
+                  : 'Just now'}
               </Typography>
             </Grid>
           </Grid>

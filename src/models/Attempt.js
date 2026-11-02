@@ -93,6 +93,14 @@ const AttemptSchema = new mongoose.Schema(
     resumedAt: {
       type: Date,
     },
+    currentQuestionIndex: {
+      type: Number,
+      default: 0,
+    },
+    lastActiveAt: {
+      type: Date,
+      default: Date.now,
+    },
     answers: [StudentAnswerSchema],
     questionEvaluations: [QuestionEvaluationSchema],
     totalMarks: {

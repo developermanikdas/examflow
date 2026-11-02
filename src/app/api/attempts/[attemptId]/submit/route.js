@@ -18,6 +18,7 @@ export async function POST(req, { params }) {
       evaluationStatus: result.attempt.evaluationStatus,
       status: result.attempt.status,
       submittedAt: result.attempt.submittedAt,
+      questionEvaluations: result.attempt.questionEvaluations || [],
     });
   } catch (error) {
     return NextResponse.json(

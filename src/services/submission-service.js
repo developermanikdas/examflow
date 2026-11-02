@@ -4,10 +4,11 @@ import Examination from '@/models/Examination';
 import AuditLog from '@/models/AuditLog';
 import { connectToDatabase } from '@/lib/mongodb';
 import { evaluateAttempt } from './evaluation-service';
+import { evaluateAttemptWithAI } from './ai-evaluator-service';
 
 /**
  * Idempotently submits a student examination attempt.
- * Evaluates all MCQs upon submission.
+ * Evaluates all MCQs upon submission and automatically grades written answers with AI.
  */
 export async function submitAttempt(attemptId, studentEmail, { isAutoSubmit = false } = {}) {
   await connectToDatabase();
@@ -48,7 +49,14 @@ export async function submitAttempt(attemptId, studentEmail, { isAutoSubmit = fa
   await attempt.save();
 
   // Run evaluation (auto grades MCQs)
-  const evaluatedAttempt = await evaluateAttempt(attempt._id);
+  let evaluatedAttempt = await evaluateAttempt(attempt._id);
+
+  // Run AI automated evaluation for descriptive / short answer questions
+  try {
+    evaluatedAttempt = await evaluateAttemptWithAI(attempt._id);
+  } catch (aiErr) {
+    console.error('AI evaluation error during submission:', aiErr);
+  }
 
   // Audit log
   await AuditLog.create({

@@ -22,13 +22,17 @@ import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { useRouter } from 'next/navigation';
 import { QuestionPaperSchema, calculateExamMetrics } from '@/lib/validation';
+import AiExamGenerator from '@/components/admin/AiExamGenerator';
 
 const STEPS = ['Upload JSON Paper', 'Review & Configure', 'Confirm & Publish'];
 
 export default function CreateExaminationPage() {
   const router = useRouter();
+  const [creationMode, setCreationMode] = useState('ai');
   const [activeStep, setActiveStep] = useState(0);
 
   // Raw JSON & Validation state
@@ -172,23 +176,50 @@ export default function CreateExaminationPage() {
   return (
     <Box sx={{ maxWidth: 1000, mx: 'auto', pb: 6 }}>
       {/* Page Title */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124' }}>
           Create New Examination
         </Typography>
         <Typography variant="body2" sx={{ color: '#5f6368', mt: 0.5 }}>
-          Upload a structured JSON paper, verify schema rules, review duration estimates, and set access parameters
+          Synthesize exams from lectures, PDFs, textbook photos using Groq AI, or manually upload a structured JSON paper.
         </Typography>
       </Box>
 
-      {/* Stepper */}
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-        {STEPS.map((label) => (
-          <Step key={label}>
-            <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+      {/* Mode Selector Tabs */}
+      <Box sx={{ mb: 3.5, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+        <Button
+          variant={creationMode === 'ai' ? 'contained' : 'outlined'}
+          color="primary"
+          startIcon={<AutoAwesomeIcon />}
+          onClick={() => setCreationMode('ai')}
+          sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, textTransform: 'none' }}
+        >
+          ✨ Instant AI Exam Generator (Video / PDF / Photos / Notes)
+        </Button>
+        <Button
+          variant={creationMode === 'manual' ? 'contained' : 'outlined'}
+          color={creationMode === 'manual' ? 'primary' : 'inherit'}
+          startIcon={<DescriptionOutlinedIcon />}
+          onClick={() => setCreationMode('manual')}
+          sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, textTransform: 'none', borderColor: '#dadce0' }}
+        >
+          📄 Manual JSON Paper Upload
+        </Button>
+      </Box>
+
+      {/* AI Generator Mode */}
+      {creationMode === 'ai' && <AiExamGenerator />}
+
+      {/* Manual JSON Stepper Mode */}
+      {creationMode === 'manual' && (
+        <>
+          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+            {STEPS.map((label) => (
+              <Step key={label}>
+                <StepLabel>{label}</StepLabel>
+              </Step>
+            ))}
+          </Stepper>
 
       {/* Step 1: Upload JSON Paper */}
       {activeStep === 0 && (
@@ -666,6 +697,8 @@ export default function CreateExaminationPage() {
             </Box>
           </CardContent>
         </Card>
+      )}
+        </>
       )}
     </Box>
   );

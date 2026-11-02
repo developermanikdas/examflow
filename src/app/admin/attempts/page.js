@@ -80,6 +80,10 @@ export default function StudentAttemptsPage() {
 
   useEffect(() => {
     fetchAttempts();
+    const interval = setInterval(() => {
+      fetchAttempts();
+    }, 6000);
+    return () => clearInterval(interval);
   }, [selectedExamId, statusFilter, evalFilter]);
 
   const handleExportAll = () => {
@@ -210,8 +214,8 @@ export default function StudentAttemptsPage() {
               <TableRow>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Student</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Examination</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Attempt #</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Live Progress</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Started At</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Score / %</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Evaluation</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Submitted</TableCell>
@@ -229,6 +233,9 @@ export default function StudentAttemptsPage() {
                 attempts.map((att) => {
                   const exam = att.examinationId;
                   const isSubmitted = ['submitted', 'auto_submitted', 'evaluated'].includes(att.status);
+                  const isPaused = att.isPaused;
+                  const currentQ = (att.currentQuestionIndex ?? 0) + 1;
+
                   return (
                     <TableRow key={att._id} hover>
                       <TableCell>
@@ -245,27 +252,62 @@ export default function StudentAttemptsPage() {
                           {exam?.title || att.examPublicId}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#80868b' }}>
-                          {att.examPublicId}
+                          {att.examPublicId} (Attempt #{att.attemptNumber})
                         </Typography>
                       </TableCell>
 
                       <TableCell>
-                        <Typography variant="body2">#{att.attemptNumber}</Typography>
+                        {att.status === 'in_progress' ? (
+                          isPaused ? (
+                            <Chip
+                              label="⏸️ Paused (Window Closed)"
+                              size="small"
+                              sx={{
+                                backgroundColor: '#feefe3',
+                                color: '#b06000',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                              }}
+                            />
+                          ) : (
+                            <Chip
+                              label={`🟢 Active • Writing Q${currentQ}`}
+                              size="small"
+                              sx={{
+                                backgroundColor: '#e6f4ea',
+                                color: '#137333',
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                              }}
+                            />
+                          )
+                        ) : (
+                          <Chip
+                            label={att.status.replace('_', ' ')}
+                            size="small"
+                            color={
+                              att.status === 'evaluated'
+                                ? 'success'
+                                : isSubmitted
+                                ? 'primary'
+                                : 'warning'
+                            }
+                            sx={{ textTransform: 'capitalize', fontSize: '0.75rem' }}
+                          />
+                        )}
                       </TableCell>
 
                       <TableCell>
-                        <Chip
-                          label={att.status.replace('_', ' ')}
-                          size="small"
-                          color={
-                            att.status === 'evaluated'
-                              ? 'success'
-                              : isSubmitted
-                              ? 'primary'
-                              : 'warning'
-                          }
-                          sx={{ textTransform: 'capitalize', fontSize: '0.75rem' }}
-                        />
+                        <Typography variant="caption" sx={{ color: '#3c4043', fontWeight: 500 }}>
+                          {att.startedAt
+                            ? new Date(att.startedAt).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '—'}
+                        </Typography>
                       </TableCell>
 
                       <TableCell>
@@ -299,8 +341,10 @@ export default function StudentAttemptsPage() {
                         <Typography variant="caption" sx={{ color: '#5f6368' }}>
                           {att.submittedAt
                             ? new Date(att.submittedAt).toLocaleString(undefined, {
-                                dateStyle: 'short',
-                                timeStyle: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
                               })
                             : 'In progress'}
                         </Typography>
