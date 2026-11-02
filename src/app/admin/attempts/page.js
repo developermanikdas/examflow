@@ -214,7 +214,7 @@ export default function StudentAttemptsPage() {
               <TableRow>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Student</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Examination</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Live Progress</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Status / Activity</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Started At</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Score / %</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Evaluation</TableCell>
@@ -260,23 +260,27 @@ export default function StudentAttemptsPage() {
                         {att.status === 'in_progress' ? (
                           isPaused ? (
                             <Chip
-                              label="⏸️ Paused (Window Closed)"
+                              label="Paused"
                               size="small"
+                              variant="outlined"
                               sx={{
-                                backgroundColor: '#feefe3',
-                                color: '#b06000',
-                                fontWeight: 600,
+                                borderColor: '#e37400',
+                                color: '#e37400',
+                                backgroundColor: '#fef7e0',
+                                fontWeight: 500,
                                 fontSize: '0.75rem',
                               }}
                             />
                           ) : (
                             <Chip
-                              label={`🟢 Active • Writing Q${currentQ}`}
+                              label={`Active • Question ${currentQ}`}
                               size="small"
+                              variant="outlined"
                               sx={{
-                                backgroundColor: '#e6f4ea',
+                                borderColor: '#137333',
                                 color: '#137333',
-                                fontWeight: 700,
+                                backgroundColor: '#e6f4ea',
+                                fontWeight: 500,
                                 fontSize: '0.75rem',
                               }}
                             />

@@ -13,22 +13,22 @@ import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import LinearProgress from '@mui/material/LinearProgress';
 import MenuItem from '@mui/material/MenuItem';
 import YouTubeIcon from '@mui/icons-material/YouTube';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import ImageIcon from '@mui/icons-material/Image';
-import DescriptionIcon from '@mui/icons-material/Description';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import LaunchIcon from '@mui/icons-material/Launch';
-import KeyIcon from '@mui/icons-material/Key';
-import TimerIcon from '@mui/icons-material/Timer';
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
+import LaunchOutlinedIcon from '@mui/icons-material/LaunchOutlined';
+import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined';
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
-import GradeIcon from '@mui/icons-material/Grade';
+import GradeOutlinedIcon from '@mui/icons-material/GradeOutlined';
 import { useRouter } from 'next/navigation';
 
 export default function AiExamGenerator() {
@@ -91,7 +91,7 @@ export default function AiExamGenerator() {
       return;
     }
     if (sourceType === 'image' && imageFiles.length === 0) {
-      setError('Please select at least one image/photo of notes or pages.');
+      setError('Please select at least one image or photo of study materials.');
       return;
     }
     if (sourceType === 'text' && (!rawText.trim() || rawText.trim().length < 30)) {
@@ -100,7 +100,7 @@ export default function AiExamGenerator() {
     }
 
     setGenerating(true);
-    setProgressStep('Step 1/3: Reading and extracting study material content...');
+    setProgressStep('Step 1 of 3: Extracting material content...');
 
     try {
       let res;
@@ -121,14 +121,14 @@ export default function AiExamGenerator() {
           }
         }
 
-        setProgressStep('Step 2/3: Groq AI is analyzing concepts & synthesizing examination questions...');
+        setProgressStep('Step 2 of 3: AI is analyzing concepts and formulating questions...');
 
         res = await fetch('/api/admin/examinations/ai-generate', {
           method: 'POST',
           body: formData,
         });
       } else {
-        setProgressStep('Step 2/3: Groq AI is analyzing lecture transcript & formulating questions...');
+        setProgressStep('Step 2 of 3: AI is analyzing lecture transcript and formulating questions...');
 
         res = await fetch('/api/admin/examinations/ai-generate', {
           method: 'POST',
@@ -144,7 +144,7 @@ export default function AiExamGenerator() {
         });
       }
 
-      setProgressStep('Step 3/3: Validating schema & automatically publishing exam...');
+      setProgressStep('Step 3 of 3: Validating schema and publishing live...');
 
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -174,18 +174,18 @@ export default function AiExamGenerator() {
       {createdExam ? (
         <Card
           sx={{
-            border: '2px solid #34a853',
-            borderRadius: 3,
+            border: '1px solid #dadce0',
+            borderRadius: 2,
             backgroundColor: '#ffffff',
-            boxShadow: '0 4px 20px 0 rgba(52,168,83,0.15)',
-            p: { xs: 2, sm: 4 },
+            boxShadow: '0 1px 2px 0 rgba(60,64,67,0.06)',
+            p: { xs: 2.5, sm: 4 },
             textAlign: 'center',
           }}
         >
           <Box
             sx={{
-              width: 68,
-              height: 68,
+              width: 56,
+              height: 56,
               borderRadius: '50%',
               backgroundColor: '#e6f4ea',
               color: '#137333',
@@ -196,88 +196,148 @@ export default function AiExamGenerator() {
               mb: 2,
             }}
           >
-            <CheckCircleOutlinedIcon sx={{ fontSize: 44 }} />
+            <CheckCircleOutlinedIcon sx={{ fontSize: 32 }} />
           </Box>
 
-          <Typography variant="h5" sx={{ fontWeight: 700, color: '#202124', mb: 1 }}>
-            🎉 Examination Created & Published!
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124', mb: 0.5 }}>
+            Examination Published Successfully
           </Typography>
 
-          <Typography variant="body1" sx={{ color: '#5f6368', mb: 3 }}>
-            <strong>{createdExam.title}</strong> has been synthesized by AI and is immediately live for candidates.
+          <Typography variant="body2" sx={{ color: '#5f6368', mb: 3 }}>
+            <strong>{createdExam.title}</strong> has been synthesized by AI and is live for candidates.
           </Typography>
 
-          {/* Quick Metrics Badge Grid */}
-          <Grid container spacing={2} sx={{ maxWidth: 650, mx: 'auto', mb: 4 }}>
+          {/* KPI Metrics Grid */}
+          <Grid container spacing={2} sx={{ maxWidth: 640, mx: 'auto', mb: 4 }}>
             <Grid item xs={6} sm={3}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center' }}>
-                <KeyIcon sx={{ color: '#1a73e8', fontSize: 24, mb: 0.5 }} />
-                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block' }}>
-                  Exam PIN
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: '#e8f0fe',
+                    color: '#1a73e8',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 1,
+                  }}
+                >
+                  <VpnKeyOutlinedIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  PIN
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a73e8' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a73e8', mt: 0.2 }}>
                   {createdExam.pin}
                 </Typography>
               </Paper>
             </Grid>
 
             <Grid item xs={6} sm={3}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center' }}>
-                <TimerIcon sx={{ color: '#f2994a', fontSize: 24, mb: 0.5 }} />
-                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block' }}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: '#fef7e0',
+                    color: '#e37400',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 1,
+                  }}
+                >
+                  <TimerOutlinedIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Duration
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124', mt: 0.2 }}>
                   {createdExam.durationMinutes} min
                 </Typography>
               </Paper>
             </Grid>
 
             <Grid item xs={6} sm={3}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center' }}>
-                <QuizOutlinedIcon sx={{ color: '#9b51e0', fontSize: 24, mb: 0.5 }} />
-                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block' }}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: '#f1f3f4',
+                    color: '#5f6368',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 1,
+                  }}
+                >
+                  <QuizOutlinedIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Questions
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#202124', mt: 0.2 }}>
                   {createdExam.questionCount}
                 </Typography>
               </Paper>
             </Grid>
 
             <Grid item xs={6} sm={3}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center' }}>
-                <GradeIcon sx={{ color: '#27ae60', fontSize: 24, mb: 0.5 }} />
-                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block' }}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, textAlign: 'center', backgroundColor: '#f8f9fa' }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    backgroundColor: '#e6f4ea',
+                    color: '#137333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 1,
+                  }}
+                >
+                  <GradeOutlinedIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Total Marks
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#137333', mt: 0.2 }}>
                   {createdExam.totalMarks}
                 </Typography>
               </Paper>
             </Grid>
           </Grid>
 
-          {/* Action CTAs */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Button
               variant="contained"
               color="primary"
-              startIcon={<ContentCopyIcon />}
+              startIcon={<ContentCopyOutlinedIcon />}
               onClick={handleCopyLink}
-              sx={{ px: 3, py: 1.2, fontWeight: 600, borderRadius: 2 }}
+              sx={{ px: 2.5, py: 1 }}
             >
-              {copied ? 'Copied to Clipboard!' : 'Copy Student Link'}
+              {copied ? 'Link Copied' : 'Copy Student Link'}
             </Button>
 
             <Button
               variant="outlined"
               color="primary"
-              endIcon={<LaunchIcon />}
+              endIcon={<LaunchOutlinedIcon />}
               component="a"
               href={`/exam/${createdExam.publicId}`}
               target="_blank"
-              sx={{ px: 3, py: 1.2, fontWeight: 600, borderRadius: 2 }}
+              sx={{ px: 2.5, py: 1 }}
             >
               Open Student Portal
             </Button>
@@ -285,9 +345,9 @@ export default function AiExamGenerator() {
             <Button
               variant="outlined"
               onClick={() => router.push(`/admin/examinations/${createdExam.publicId}`)}
-              sx={{ px: 3, py: 1.2, fontWeight: 600, borderRadius: 2, borderColor: '#dadce0', color: '#3c4043' }}
+              sx={{ px: 2.5, py: 1, borderColor: '#dadce0', color: '#3c4043' }}
             >
-              Manage in Admin Console
+              Manage in Console
             </Button>
 
             <Button
@@ -300,20 +360,19 @@ export default function AiExamGenerator() {
                 setImagePreviews([]);
                 setRawText('');
               }}
-              sx={{ px: 3, py: 1.2, color: '#5f6368' }}
+              sx={{ px: 2, py: 1, color: '#5f6368' }}
             >
-              + Create Another Exam
+              Create Another Examination
             </Button>
           </Box>
         </Card>
       ) : (
         /* Generator Input Form */
-        <Card sx={{ border: '1px solid #dadce0', borderRadius: 3, overflow: 'hidden' }}>
+        <Card sx={{ border: '1px solid #dadce0', borderRadius: 2 }}>
           <Box
             sx={{
-              backgroundColor: '#f8fafd',
-              p: 3,
-              borderBottom: '1px solid #e0e5eb',
+              p: { xs: 2.5, sm: 3 },
+              borderBottom: '1px solid #dadce0',
               display: 'flex',
               alignItems: 'center',
               gap: 2,
@@ -321,9 +380,9 @@ export default function AiExamGenerator() {
           >
             <Box
               sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2,
+                width: 40,
+                height: 40,
+                borderRadius: '8px',
                 backgroundColor: '#e8f0fe',
                 color: '#1a73e8',
                 display: 'flex',
@@ -331,74 +390,81 @@ export default function AiExamGenerator() {
                 justifyContent: 'center',
               }}
             >
-              <AutoAwesomeIcon />
+              <AutoAwesomeOutlinedIcon fontSize="small" />
             </Box>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#202124', lineHeight: 1.2 }}>
-                Instant AI Exam Generator
+              <Typography variant="h6" sx={{ fontSize: '1.05rem', fontWeight: 600, color: '#202124' }}>
+                AI Examination Generator
               </Typography>
-              <Typography variant="body2" sx={{ color: '#5f6368', mt: 0.3 }}>
-                Upload study material, paste a YouTube lecture link, or provide textbook photos. AI will automatically generate and publish the test.
+              <Typography variant="body2" sx={{ color: '#5f6368', mt: 0.2 }}>
+                Provide lecture materials, video links, or textbook notes to automatically synthesize an authoritative examination paper.
               </Typography>
             </Box>
           </Box>
 
-          <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
+          <CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}>
             {error && (
-              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 1.5 }}>
                 {error}
               </Alert>
             )}
 
-            {/* Source Type Selector */}
+            {/* Source Type Tabs */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124', mb: 1.5 }}>
-              Choose Study Material Source:
+              Study Material Source:
             </Typography>
 
-            <ToggleButtonGroup
+            <Tabs
               value={sourceType}
-              exclusive
               onChange={(e, val) => val && setSourceType(val)}
+              textColor="primary"
+              indicatorColor="primary"
               sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
+                minHeight: 44,
+                borderBottom: '1px solid #dadce0',
                 mb: 3,
-                gap: 1,
-                '& .MuiToggleButton-root': {
-                  borderRadius: 2,
-                  px: 2.5,
-                  py: 1,
-                  border: '1px solid #dadce0 !important',
-                  fontWeight: 600,
+                '& .MuiTab-root': {
+                  minHeight: 44,
                   textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.88rem',
+                  color: '#5f6368',
+                  px: 2.5,
                   '&.Mui-selected': {
-                    backgroundColor: '#e8f0fe',
                     color: '#1a73e8',
-                    borderColor: '#1a73e8 !important',
+                    fontWeight: 600,
                   },
                 },
               }}
             >
-              <ToggleButton value="youtube">
-                <YouTubeIcon sx={{ color: '#ea4335', mr: 1, fontSize: 20 }} />
-                YouTube Lecture
-              </ToggleButton>
-              <ToggleButton value="pdf">
-                <PictureAsPdfIcon sx={{ color: '#ea4335', mr: 1, fontSize: 20 }} />
-                PDF Document / Book
-              </ToggleButton>
-              <ToggleButton value="image">
-                <ImageIcon sx={{ color: '#34a853', mr: 1, fontSize: 20 }} />
-                Notes / Textbook Photos
-              </ToggleButton>
-              <ToggleButton value="text">
-                <DescriptionIcon sx={{ color: '#1a73e8', mr: 1, fontSize: 20 }} />
-                Text / Syllabus Notes
-              </ToggleButton>
-            </ToggleButtonGroup>
+              <Tab
+                value="youtube"
+                icon={<YouTubeIcon sx={{ color: '#d93025', fontSize: 20 }} />}
+                iconPosition="start"
+                label="YouTube Lecture"
+              />
+              <Tab
+                value="pdf"
+                icon={<PictureAsPdfOutlinedIcon sx={{ color: '#d93025', fontSize: 20 }} />}
+                iconPosition="start"
+                label="PDF Document"
+              />
+              <Tab
+                value="image"
+                icon={<ImageOutlinedIcon sx={{ color: '#137333', fontSize: 20 }} />}
+                iconPosition="start"
+                label="Textbook Photos"
+              />
+              <Tab
+                value="text"
+                icon={<DescriptionOutlinedIcon sx={{ color: '#1a73e8', fontSize: 20 }} />}
+                iconPosition="start"
+                label="Notes & Syllabus"
+              />
+            </Tabs>
 
-            {/* Dynamic Source Input Section */}
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 4, backgroundColor: '#ffffff' }}>
+            {/* Source Input Area */}
+            <Box sx={{ mb: 3.5 }}>
               {sourceType === 'youtube' && (
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
@@ -406,10 +472,11 @@ export default function AiExamGenerator() {
                   </Typography>
                   <TextField
                     fullWidth
-                    placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://youtu.be/..."
+                    size="small"
+                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
-                    helperText="AI automatically fetches the video captions and transcript to create questions."
+                    helperText="Captions and transcript are extracted automatically to formulate assessment questions."
                   />
                 </Box>
               )}
@@ -421,25 +488,26 @@ export default function AiExamGenerator() {
                   </Typography>
                   <Box
                     sx={{
-                      border: '2px dashed #dadce0',
+                      border: '1px dashed #dadce0',
                       borderRadius: 2,
-                      p: 4,
+                      p: 3.5,
                       textAlign: 'center',
                       backgroundColor: '#f8f9fa',
                       cursor: 'pointer',
-                      '&:hover': { borderColor: '#1a73e8', backgroundColor: '#f4f7fe' },
+                      transition: 'border-color 0.2s ease',
+                      '&:hover': { borderColor: '#1a73e8', backgroundColor: '#f1f3f4' },
                     }}
                     component="label"
                   >
                     <input type="file" accept=".pdf" hidden onChange={handlePdfChange} />
-                    <PictureAsPdfIcon sx={{ fontSize: 44, color: pdfFile ? '#137333' : '#ea4335', mb: 1 }} />
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      {pdfFile ? pdfFile.name : 'Click to browse or drop your PDF here'}
+                    <PictureAsPdfOutlinedIcon sx={{ fontSize: 36, color: pdfFile ? '#137333' : '#5f6368', mb: 1 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#202124' }}>
+                      {pdfFile ? pdfFile.name : 'Click to select or drag and drop a PDF file'}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 0.5 }}>
                       {pdfFile
                         ? `${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze`
-                        : 'Supports textbooks, lecture slides, research papers, notes (up to 15MB)'}
+                        : 'Supports textbooks, research papers, and course notes'}
                     </Typography>
                   </Box>
                 </Box>
@@ -452,25 +520,26 @@ export default function AiExamGenerator() {
                   </Typography>
                   <Box
                     sx={{
-                      border: '2px dashed #dadce0',
+                      border: '1px dashed #dadce0',
                       borderRadius: 2,
-                      p: 4,
+                      p: 3.5,
                       textAlign: 'center',
                       backgroundColor: '#f8f9fa',
                       cursor: 'pointer',
-                      '&:hover': { borderColor: '#34a853', backgroundColor: '#f4fef7' },
+                      transition: 'border-color 0.2s ease',
+                      '&:hover': { borderColor: '#1a73e8', backgroundColor: '#f1f3f4' },
                     }}
                     component="label"
                   >
                     <input type="file" accept="image/*" multiple hidden onChange={handleImagesChange} />
-                    <ImageIcon sx={{ fontSize: 44, color: imageFiles.length > 0 ? '#137333' : '#34a853', mb: 1 }} />
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    <ImageOutlinedIcon sx={{ fontSize: 36, color: imageFiles.length > 0 ? '#137333' : '#5f6368', mb: 1 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#202124' }}>
                       {imageFiles.length > 0
                         ? `${imageFiles.length} photo(s) selected`
-                        : 'Click to select or drop photos of notes/pages'}
+                        : 'Click to select or drag and drop photos of pages/notes'}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 0.5 }}>
-                      Multimodal vision AI directly extracts and reads math formulas, text, diagrams, and notes.
+                      Multimodal vision model reads textbook diagrams, handwritten notes, and formulas.
                     </Typography>
                   </Box>
 
@@ -483,8 +552,8 @@ export default function AiExamGenerator() {
                           src={src}
                           alt={`Upload preview ${i + 1}`}
                           sx={{
-                            width: 72,
-                            height: 72,
+                            width: 68,
+                            height: 68,
                             objectFit: 'cover',
                             borderRadius: 1.5,
                             border: '1px solid #dadce0',
@@ -504,21 +573,23 @@ export default function AiExamGenerator() {
                   <TextField
                     fullWidth
                     multiline
-                    rows={6}
-                    placeholder="Paste chapter notes, lecture summary, key formulas, or key concepts here..."
+                    rows={5}
+                    placeholder="Paste chapter notes, lecture summaries, key formulas, or syllabus concepts..."
                     value={rawText}
                     onChange={(e) => setRawText(e.target.value)}
                   />
                 </Box>
               )}
-            </Paper>
+            </Box>
 
-            {/* Customization Controls */}
+            <Divider sx={{ mb: 3 }} />
+
+            {/* Configuration Controls */}
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124', mb: 2 }}>
-              Generation Configuration:
+              Examination Parameters:
             </Typography>
 
-            <Grid container spacing={2.5} sx={{ mb: 4 }}>
+            <Grid container spacing={2} sx={{ mb: 3.5 }}>
               <Grid item xs={12} sm={3}>
                 <TextField
                   select
@@ -528,10 +599,10 @@ export default function AiExamGenerator() {
                   value={questionCount}
                   onChange={(e) => setQuestionCount(Number(e.target.value))}
                 >
-                  <MenuItem value={5}>5 Questions (Express Quiz)</MenuItem>
-                  <MenuItem value={10}>10 Questions (Standard Test)</MenuItem>
-                  <MenuItem value={15}>15 Questions (Full Exam)</MenuItem>
-                  <MenuItem value={20}>20 Questions (Comprehensive)</MenuItem>
+                  <MenuItem value={5}>5 Questions</MenuItem>
+                  <MenuItem value={10}>10 Questions</MenuItem>
+                  <MenuItem value={15}>15 Questions</MenuItem>
+                  <MenuItem value={20}>20 Questions</MenuItem>
                 </TextField>
               </Grid>
 
@@ -544,9 +615,9 @@ export default function AiExamGenerator() {
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                 >
-                  <MenuItem value="Easy">Easy (Conceptual & Direct)</MenuItem>
-                  <MenuItem value="Medium">Medium (Analytical & Balanced)</MenuItem>
-                  <MenuItem value="Hard">Hard (Advanced Problem Solving)</MenuItem>
+                  <MenuItem value="Easy">Easy (Conceptual)</MenuItem>
+                  <MenuItem value="Medium">Medium (Balanced)</MenuItem>
+                  <MenuItem value="Hard">Hard (Analytical)</MenuItem>
                 </TextField>
               </Grid>
 
@@ -555,12 +626,12 @@ export default function AiExamGenerator() {
                   select
                   fullWidth
                   size="small"
-                  label="Question Composition"
+                  label="Question Type"
                   value={questionType}
                   onChange={(e) => setQuestionType(e.target.value)}
                 >
-                  <MenuItem value="mixed">Mixed (MCQs + Written)</MenuItem>
-                  <MenuItem value="mcq">MCQ Only (Instant Grading)</MenuItem>
+                  <MenuItem value="mixed">Mixed (MCQs & Written)</MenuItem>
+                  <MenuItem value="mcq">Multiple Choice Only</MenuItem>
                   <MenuItem value="written">Written / Short Answer Only</MenuItem>
                 </TextField>
               </Grid>
@@ -577,11 +648,11 @@ export default function AiExamGenerator() {
               </Grid>
             </Grid>
 
-            {/* Progress Display during generation */}
+            {/* Progress Display */}
             {generating && (
               <Box sx={{ mb: 3 }}>
-                <LinearProgress sx={{ borderRadius: 1, height: 6, mb: 1.5 }} />
-                <Typography variant="body2" sx={{ color: '#1a73e8', fontWeight: 600 }}>
+                <LinearProgress sx={{ borderRadius: 1, height: 4, mb: 1.5 }} />
+                <Typography variant="body2" sx={{ color: '#1a73e8', fontWeight: 500 }}>
                   {progressStep}
                 </Typography>
               </Box>
@@ -591,14 +662,12 @@ export default function AiExamGenerator() {
             <Button
               variant="contained"
               color="primary"
-              size="large"
-              fullWidth
               disabled={generating}
               onClick={handleGenerate}
-              startIcon={generating ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
-              sx={{ py: 1.5, fontWeight: 700, borderRadius: 2, fontSize: '1rem' }}
+              startIcon={generating ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeOutlinedIcon />}
+              sx={{ px: 3, py: 1.2, fontWeight: 500 }}
             >
-              {generating ? 'Synthesizing Examination with AI...' : 'Generate & Publish Examination Immediately'}
+              {generating ? 'Synthesizing Examination...' : 'Generate & Publish Examination'}
             </Button>
           </CardContent>
         </Card>

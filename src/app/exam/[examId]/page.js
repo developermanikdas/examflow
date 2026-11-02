@@ -37,6 +37,10 @@ import SchoolIcon from '@mui/icons-material/School';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import { useParams } from 'next/navigation';
 
 export default function StudentExaminationPage() {
@@ -803,7 +807,9 @@ export default function StudentExaminationPage() {
                 </Button>
 
                 <Divider sx={{ my: 2.5 }}>
-                  <Typography variant="caption" sx={{ color: '#80868b' }}>ALREADY TOOK THE EXAM?</Typography>
+                  <Typography variant="caption" sx={{ color: '#80868b', letterSpacing: '0.5px' }}>
+                    ALREADY TOOK THE EXAM?
+                  </Typography>
                 </Divider>
 
                 <Button
@@ -811,18 +817,19 @@ export default function StudentExaminationPage() {
                   variant="outlined"
                   onClick={handleFetchReview}
                   disabled={verifying}
+                  startIcon={<AssessmentOutlinedIcon fontSize="small" />}
                   sx={{
-                    py: 1.1,
-                    fontWeight: 600,
+                    py: 1,
+                    fontWeight: 500,
                     borderRadius: '6px',
                     borderColor: '#dadce0',
                     color: '#1a73e8',
                     textTransform: 'none',
                     backgroundColor: '#ffffff',
-                    '&:hover': { backgroundColor: '#f8fafd', borderColor: '#1a73e8' },
+                    '&:hover': { backgroundColor: '#f1f3f4', borderColor: '#dadce0' },
                   }}
                 >
-                  🔍 View My Previous Results & AI Feedback
+                  View Previous Results & AI Feedback
                 </Button>
               </Box>
             </CardContent>
@@ -1208,21 +1215,21 @@ export default function StudentExaminationPage() {
         {stage === 'SUBMITTED' && (
           <Card
             sx={{
-              maxWidth: 740,
+              maxWidth: 760,
               width: '100%',
-              borderRadius: 3,
+              borderRadius: 2,
               border: '1px solid #dadce0',
-              boxShadow: '0 2px 10px 0 rgba(60,64,67,0.1)',
+              boxShadow: '0 1px 2px 0 rgba(60,64,67,0.06)',
               my: 4,
               mx: 'auto',
               textAlign: 'center',
             }}
           >
-            <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+            <CardContent sx={{ p: { xs: 3, sm: 4.5 } }}>
               <Box
                 sx={{
-                  width: 64,
-                  height: 64,
+                  width: 56,
+                  height: 56,
                   borderRadius: '50%',
                   backgroundColor: '#e6f4ea',
                   color: '#137333',
@@ -1233,28 +1240,28 @@ export default function StudentExaminationPage() {
                   mb: 2,
                 }}
               >
-                <AssignmentTurnedInIcon sx={{ fontSize: 36 }} />
+                <AssignmentTurnedInIcon sx={{ fontSize: 32 }} />
               </Box>
 
-              <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124', mb: 1 }}>
-                Examination Successfully Submitted!
+              <Typography variant="h5" sx={{ fontWeight: 600, color: '#202124', mb: 0.5 }}>
+                Examination Submitted
               </Typography>
               <Typography variant="body2" sx={{ color: '#5f6368', mb: 3 }}>
-                Thank you, <strong>{studentName}</strong>. Your attempt has been registered, auto-evaluated, and verified.
+                Candidate: <strong>{studentName}</strong> &bull; Attempt registered and verified by server.
               </Typography>
 
               {/* Result Summary Box */}
               {submissionResult && (
-                <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, backgroundColor: '#f8f9fa', mb: 4 }}>
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, backgroundColor: '#f8f9fa', mb: 4 }}>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Typography variant="caption" sx={{ color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Total Score Obtained
                       </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a73e8', mt: 0.5 }}>
+                      <Typography variant="h4" sx={{ fontWeight: 600, color: '#1a73e8', mt: 0.5 }}>
                         {submissionResult.obtainedMarks} / {submissionResult.totalMarks}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 600 }}>
+                      <Typography variant="caption" sx={{ color: '#5f6368', fontWeight: 500 }}>
                         {submissionResult.percentage}% Score
                       </Typography>
                     </Grid>
@@ -1269,9 +1276,9 @@ export default function StudentExaminationPage() {
                               ? 'Evaluated by AI'
                               : 'Written Review Pending'
                           }
-                          size="medium"
+                          size="small"
                           color={submissionResult.evaluationStatus === 'fully_evaluated' ? 'success' : 'warning'}
-                          sx={{ fontWeight: 600 }}
+                          sx={{ fontWeight: 500 }}
                         />
                       </Box>
                     </Grid>
@@ -1279,9 +1286,9 @@ export default function StudentExaminationPage() {
 
                   {/* Question Breakdown Report */}
                   {submissionResult?.questionEvaluations && submissionResult.questionEvaluations.length > 0 && (
-                    <Box sx={{ mt: 4, textAlign: 'left' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#202124', mb: 2 }}>
-                        Question-by-Question AI Evaluation Breakdown:
+                    <Box sx={{ mt: 3.5, textAlign: 'left' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124', mb: 2 }}>
+                        Question-by-Question Evaluation Breakdown:
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {questions.map((q, idx) => {
@@ -1296,33 +1303,35 @@ export default function StudentExaminationPage() {
                               key={q.id}
                               variant="outlined"
                               sx={{
-                                p: 2,
+                                p: 2.5,
                                 borderRadius: 2,
-                                borderColor: isFull ? '#a8dab5' : marksAwarded > 0 ? '#ffe082' : '#dadce0',
-                                backgroundColor: isFull ? '#fbfefc' : '#ffffff',
+                                border: '1px solid #dadce0',
+                                borderLeft: isFull ? '4px solid #137333' : marksAwarded > 0 ? '4px solid #e37400' : '4px solid #dadce0',
+                                backgroundColor: '#ffffff',
                               }}
                             >
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124' }}>
-                                  Q{idx + 1}: {q.type === 'mcq' ? 'Multiple Choice' : 'Written Response'}
+                                  Question {idx + 1} &bull; {q.type === 'mcq' ? 'Multiple Choice' : 'Written Response'}
                                 </Typography>
                                 <Chip
                                   label={`${marksAwarded} / ${maxMarks} marks`}
                                   size="small"
                                   color={isFull ? 'success' : marksAwarded > 0 ? 'warning' : 'default'}
-                                  sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                                  variant="outlined"
+                                  sx={{ fontWeight: 500, fontSize: '0.75rem' }}
                                 />
                               </Box>
-                              <Typography variant="body2" sx={{ color: '#3c4043', mb: 1.5, fontWeight: 500 }}>
+                              <Typography variant="body2" sx={{ color: '#3c4043', mb: 1.5 }}>
                                 {q.question || q.text}
                               </Typography>
 
                               {studentAns ? (
-                                <Box sx={{ mb: 1.5, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1.5, border: '1px solid #edf2f7' }}>
-                                  <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', fontWeight: 600 }}>
+                                <Box sx={{ mb: 1.5, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1.5, border: '1px solid #dadce0' }}>
+                                  <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', fontWeight: 500 }}>
                                     Your Submitted Response:
                                   </Typography>
-                                  <Typography variant="body2" sx={{ color: '#202124' }}>
+                                  <Typography variant="body2" sx={{ color: '#202124', mt: 0.3 }}>
                                     {typeof studentAns === 'string' ? studentAns : JSON.stringify(studentAns)}
                                   </Typography>
                                 </Box>
@@ -1333,10 +1342,13 @@ export default function StudentExaminationPage() {
                               )}
 
                               {evalItem?.evaluatorFeedback && (
-                                <Box sx={{ p: 1.5, backgroundColor: '#e8f0fe', borderRadius: 1.5, border: '1px solid #d2e3fc' }}>
-                                  <Typography variant="caption" sx={{ color: '#1a73e8', display: 'block', fontWeight: 700 }}>
-                                    🤖 AI Assessment & Feedback:
-                                  </Typography>
+                                <Box sx={{ p: 1.5, backgroundColor: '#f8fafd', borderRadius: 1.5, border: '1px solid #d2e3fc' }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5 }}>
+                                    <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#1a73e8' }} />
+                                    <Typography variant="caption" sx={{ color: '#1a73e8', fontWeight: 600 }}>
+                                      AI Evaluator Feedback:
+                                    </Typography>
+                                  </Box>
                                   <Typography variant="body2" sx={{ color: '#174ea6' }}>
                                     {evalItem.evaluatorFeedback}
                                   </Typography>
@@ -1354,25 +1366,27 @@ export default function StudentExaminationPage() {
               <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3, mb: 1, flexWrap: 'wrap' }}>
                 <Button
                   variant="outlined"
+                  startIcon={<PrintOutlinedIcon fontSize="small" />}
                   onClick={() => window.print()}
-                  sx={{ borderColor: '#dadce0', color: '#1a73e8', fontWeight: 600, borderRadius: 2 }}
+                  sx={{ borderColor: '#dadce0', color: '#1a73e8', fontWeight: 500 }}
                 >
-                  🖨️ Print / Save Report
+                  Print / Save Report
                 </Button>
                 <Button
                   variant="text"
+                  startIcon={<ArrowBackIcon fontSize="small" />}
                   onClick={() => {
                     setStage('VERIFY');
                     setSubmissionResult(null);
                   }}
-                  sx={{ color: '#5f6368', fontWeight: 600 }}
+                  sx={{ color: '#5f6368', fontWeight: 500 }}
                 >
-                  ← Return to Exam Entry
+                  Return to Exam Entry
                 </Button>
               </Box>
 
               <Typography variant="caption" sx={{ color: '#80868b', display: 'block', mt: 1 }}>
-                You may now safely close this browser window or return anytime with your email to review your feedback.
+                You may safely close this browser window or return anytime with your email to review your feedback.
               </Typography>
             </CardContent>
           </Card>

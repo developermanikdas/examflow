@@ -16,6 +16,8 @@ import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Paper from '@mui/material/Paper';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
@@ -185,26 +187,47 @@ export default function CreateExaminationPage() {
         </Typography>
       </Box>
 
-      {/* Mode Selector Tabs */}
-      <Box sx={{ mb: 3.5, display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-        <Button
-          variant={creationMode === 'ai' ? 'contained' : 'outlined'}
-          color="primary"
-          startIcon={<AutoAwesomeIcon />}
-          onClick={() => setCreationMode('ai')}
-          sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, textTransform: 'none' }}
+      {/* Creation Mode Tabs */}
+      <Box sx={{ borderBottom: '1px solid #dadce0', mb: 3.5 }}>
+        <Tabs
+          value={creationMode}
+          onChange={(e, val) => setCreationMode(val)}
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{
+            minHeight: 48,
+            '& .MuiTab-root': {
+              minHeight: 48,
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.92rem',
+              color: '#5f6368',
+              px: 3,
+              '&.Mui-selected': {
+                color: '#1a73e8',
+                fontWeight: 600,
+              },
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#1a73e8',
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+            },
+          }}
         >
-          ✨ Instant AI Exam Generator (Video / PDF / Photos / Notes)
-        </Button>
-        <Button
-          variant={creationMode === 'manual' ? 'contained' : 'outlined'}
-          color={creationMode === 'manual' ? 'primary' : 'inherit'}
-          startIcon={<DescriptionOutlinedIcon />}
-          onClick={() => setCreationMode('manual')}
-          sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, textTransform: 'none', borderColor: '#dadce0' }}
-        >
-          📄 Manual JSON Paper Upload
-        </Button>
+          <Tab
+            value="ai"
+            icon={<AutoAwesomeIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="AI Examination Generator"
+          />
+          <Tab
+            value="manual"
+            icon={<UploadFileOutlinedIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="Upload JSON Question Paper"
+          />
+        </Tabs>
       </Box>
 
       {/* AI Generator Mode */}
