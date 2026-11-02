@@ -167,3 +167,4 @@ CRITICAL: Return a JSON object with this exact shape:
     return attempt;
   }
 }
+
