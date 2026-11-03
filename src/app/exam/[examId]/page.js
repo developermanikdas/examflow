@@ -41,6 +41,7 @@ import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useParams } from 'next/navigation';
 
 export default function StudentExaminationPage() {
@@ -1342,14 +1343,36 @@ export default function StudentExaminationPage() {
                               )}
 
                               {evalItem?.evaluatorFeedback && (
-                                <Box sx={{ p: 1.5, backgroundColor: '#f8fafd', borderRadius: 1.5, border: '1px solid #d2e3fc' }}>
+                                <Box
+                                  sx={{
+                                    p: 1.5,
+                                    backgroundColor: evalItem.evaluatorType === 'manual' ? '#fefaf0' : '#f8fafd',
+                                    borderRadius: 1.5,
+                                    border: evalItem.evaluatorType === 'manual' ? '1px solid #feefc3' : '1px solid #d2e3fc',
+                                  }}
+                                >
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5 }}>
-                                    <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#1a73e8' }} />
-                                    <Typography variant="caption" sx={{ color: '#1a73e8', fontWeight: 600 }}>
-                                      AI Evaluator Feedback:
+                                    {evalItem.evaluatorType === 'manual' ? (
+                                      <EditOutlinedIcon sx={{ fontSize: 16, color: '#b06000' }} />
+                                    ) : (
+                                      <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#1a73e8' }} />
+                                    )}
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: evalItem.evaluatorType === 'manual' ? '#b06000' : '#1a73e8',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {evalItem.evaluatorType === 'manual'
+                                        ? 'Instructor Evaluation Feedback:'
+                                        : 'AI Evaluator Feedback:'}
                                     </Typography>
                                   </Box>
-                                  <Typography variant="body2" sx={{ color: '#174ea6' }}>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ color: evalItem.evaluatorType === 'manual' ? '#202124' : '#174ea6' }}
+                                  >
                                     {evalItem.evaluatorFeedback}
                                   </Typography>
                                 </Box>

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Attempt from '@/models/Attempt';
 import Examination from '@/models/Examination';
 import { connectToDatabase } from '@/lib/mongodb';
+import { evaluateAttemptWithAI } from './ai-evaluator-service';
 
 /**
  * Retrieves paginated attempts with filtering for Admin Dashboard
@@ -71,7 +72,7 @@ export async function getAdminAttemptDetails(attemptId) {
     throw err;
   }
 
-  const attempt = await Attempt.findById(attemptId)
+  let attempt = await Attempt.findById(attemptId)
     .populate('examinationId', 'title description subject totalMarks questions durationMinutes')
     .lean();
 
@@ -79,6 +80,22 @@ export async function getAdminAttemptDetails(attemptId) {
     const err = new Error('Attempt not found');
     err.statusCode = 404;
     throw err;
+  }
+
+  // If the attempt is submitted/completed but grading is pending or partial,
+  // automatically evaluate it with AI so the instructor immediately sees the grades.
+  if (
+    ['submitted', 'auto_submitted'].includes(attempt.status) &&
+    attempt.evaluationStatus !== 'fully_evaluated'
+  ) {
+    try {
+      await evaluateAttemptWithAI(attemptId);
+      attempt = await Attempt.findById(attemptId)
+        .populate('examinationId', 'title description subject totalMarks questions durationMinutes')
+        .lean();
+    } catch (e) {
+      console.error('Auto AI evaluation in getAdminAttemptDetails error:', e);
+    }
   }
 
   return attempt;

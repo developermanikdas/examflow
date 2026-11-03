@@ -63,10 +63,10 @@ export async function evaluateAttempt(attemptId) {
         evaluatorType: 'auto',
       });
     } else {
-      // Written question: check if previously manually graded
+      // Written question: check if previously manually or AI graded
       const existingEval = attempt.questionEvaluations?.find((e) => e.questionId === q.id);
 
-      if (existingEval && existingEval.evaluatorType === 'manual') {
+      if (existingEval && existingEval.evaluatedAt && (existingEval.evaluatorType === 'manual' || existingEval.evaluatorType === 'ai')) {
         totalObtainedMarks += existingEval.marksAwarded;
         evaluations.push(existingEval);
         hasEvaluatedQuestions = true;
@@ -80,6 +80,7 @@ export async function evaluateAttempt(attemptId) {
           evaluatorFeedback: '',
           evaluatedAt: null,
           evaluatorType: 'manual', // pending
+          isManual: false,
         });
       }
     }
@@ -157,6 +158,7 @@ export async function gradeWrittenQuestion(attemptId, questionId, marksAwarded, 
     evaluatorFeedback: feedback?.trim() || '',
     evaluatedAt: new Date(),
     evaluatorType: 'manual',
+    isManual: true,
   };
 
   if (evalIndex >= 0) {

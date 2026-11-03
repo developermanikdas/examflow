@@ -21,6 +21,8 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SaveIcon from '@mui/icons-material/Save';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useRouter, useParams } from 'next/navigation';
 
 export default function AttemptDetailsAndGradingPage() {
@@ -29,6 +31,7 @@ export default function AttemptDetailsAndGradingPage() {
 
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [aiEvaluating, setAiEvaluating] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   // Local state for grading inputs: { [questionId]: { marks: number, feedback: string, saving: boolean } }
@@ -72,6 +75,53 @@ export default function AttemptDetailsAndGradingPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, [attemptId]);
+
+  const handleRunAiEvaluation = async () => {
+    setAiEvaluating(true);
+    try {
+      const res = await fetch(`/api/admin/attempts/${attemptId}/ai-evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: false }),
+      });
+      const data = await res.json();
+      if (data.success && data.attempt) {
+        setAttempt(data.attempt);
+        const newGrading = {};
+        const existingEvals = new Map(
+          (data.attempt.questionEvaluations || []).map((e) => [e.questionId, e])
+        );
+        for (const q of data.attempt.examinationId?.questions || []) {
+          const evalItem = existingEvals.get(q.id);
+          newGrading[q.id] = {
+            marks: evalItem?.marksAwarded ?? 0,
+            feedback: evalItem?.evaluatorFeedback || '',
+            saving: false,
+          };
+        }
+        setGradingState(newGrading);
+        setSnackbar({
+          open: true,
+          message: 'AI Evaluation successfully completed! Candidate marks and feedback updated.',
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: data.error || 'Failed to evaluate attempt with AI',
+          severity: 'error',
+        });
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: 'Network error while running AI evaluation.',
+        severity: 'error',
+      });
+    } finally {
+      setAiEvaluating(false);
+    }
+  };
 
   const handleGradeChange = (questionId, field, value) => {
     setGradingState((prev) => ({
@@ -174,6 +224,28 @@ export default function AttemptDetailsAndGradingPage() {
         </Button>
       </Box>
 
+      {/* AI Evaluation Pending Banner */}
+      {attempt.status !== 'in_progress' && attempt.evaluationStatus !== 'fully_evaluated' && (
+        <Alert
+          severity="warning"
+          icon={<AutoAwesomeOutlinedIcon fontSize="inherit" />}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={handleRunAiEvaluation}
+              disabled={aiEvaluating}
+              sx={{ fontWeight: 600 }}
+            >
+              {aiEvaluating ? 'Evaluating...' : 'Run AI Evaluation Now'}
+            </Button>
+          }
+          sx={{ mb: 3, borderRadius: 2 }}
+        >
+          Written questions are pending evaluation. Run AI Evaluation to automatically grade answers and assign marks, while preserving any manual scores.
+        </Alert>
+      )}
+
       {/* Header Profile & Score Card */}
       <Card
         sx={{
@@ -211,15 +283,38 @@ export default function AttemptDetailsAndGradingPage() {
               </Typography>
             </Box>
 
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadOutlinedIcon />}
-              component="a"
-              href={`/api/admin/attempts/export?attemptId=${attempt._id}`}
-              sx={{ borderColor: '#dadce0', color: '#1a73e8', backgroundColor: '#ffffff' }}
-            >
-              Download Attempt JSON
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={
+                  aiEvaluating ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AutoAwesomeOutlinedIcon fontSize="small" />
+                  )
+                }
+                disabled={aiEvaluating || attempt.status === 'in_progress'}
+                onClick={handleRunAiEvaluation}
+                sx={{ px: 2.2, py: 0.8 }}
+              >
+                {aiEvaluating
+                  ? 'Evaluating with AI...'
+                  : attempt.evaluationStatus === 'fully_evaluated'
+                  ? 'Re-evaluate with AI'
+                  : 'Evaluate with AI'}
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<FileDownloadOutlinedIcon />}
+                component="a"
+                href={`/api/admin/attempts/export?attemptId=${attempt._id}`}
+                sx={{ borderColor: '#dadce0', color: '#1a73e8', backgroundColor: '#ffffff' }}
+              >
+                Download Attempt JSON
+              </Button>
+            </Box>
           </Box>
 
           <Divider sx={{ my: 2 }} />
@@ -410,7 +505,41 @@ export default function AttemptDetailsAndGradingPage() {
                   </Typography>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1, ml: 2, flexShrink: 0 }}>
+                <Box sx={{ display: 'flex', gap: 1, ml: 2, flexShrink: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {evalItem?.evaluatedAt && (
+                    <Chip
+                      icon={
+                        evalItem.evaluatorType === 'ai' ? (
+                          <AutoAwesomeOutlinedIcon sx={{ fontSize: '14px !important' }} />
+                        ) : evalItem.evaluatorType === 'manual' ? (
+                          <EditOutlinedIcon sx={{ fontSize: '14px !important' }} />
+                        ) : undefined
+                      }
+                      label={
+                        evalItem.evaluatorType === 'ai'
+                          ? `AI Graded: ${evalItem.marksAwarded} / ${q.marks}`
+                          : evalItem.evaluatorType === 'manual'
+                          ? `Manual Grade: ${evalItem.marksAwarded} / ${q.marks}`
+                          : `Auto: ${evalItem.marksAwarded} / ${q.marks}`
+                      }
+                      size="small"
+                      sx={{
+                        backgroundColor:
+                          evalItem.evaluatorType === 'ai'
+                            ? '#e8f0fe'
+                            : evalItem.evaluatorType === 'manual'
+                            ? '#fef7e0'
+                            : '#e6f4ea',
+                        color:
+                          evalItem.evaluatorType === 'ai'
+                            ? '#1a73e8'
+                            : evalItem.evaluatorType === 'manual'
+                            ? '#b06000'
+                            : '#137333',
+                        fontWeight: 600,
+                      }}
+                    />
+                  )}
                   <Chip label={q.type.replace('_', ' ')} size="small" sx={{ textTransform: 'capitalize' }} />
                   <Chip label={`Max: ${q.marks} Marks`} size="small" color="primary" variant="outlined" />
                 </Box>
@@ -485,6 +614,43 @@ export default function AttemptDetailsAndGradingPage() {
                 )}
               </Box>
 
+              {/* Evaluator Feedback Card (if evaluated) */}
+              {!isMcq && evalItem?.evaluatorFeedback && (
+                <Box
+                  sx={{
+                    mb: 2.5,
+                    p: 2,
+                    borderRadius: 1.5,
+                    backgroundColor: evalItem.evaluatorType === 'ai' ? '#f8fafd' : '#fefaf0',
+                    border: evalItem.evaluatorType === 'ai' ? '1px solid #d2e3fc' : '1px solid #feefc3',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    {evalItem.evaluatorType === 'ai' ? (
+                      <AutoAwesomeOutlinedIcon sx={{ fontSize: 16, color: '#1a73e8' }} />
+                    ) : (
+                      <EditOutlinedIcon sx={{ fontSize: 16, color: '#b06000' }} />
+                    )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 600,
+                        color: evalItem.evaluatorType === 'ai' ? '#1a73e8' : '#b06000',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      {evalItem.evaluatorType === 'ai'
+                        ? 'AI Grading Feedback & Rubric Notes'
+                        : 'Instructor Feedback'}
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: '#202124' }}>
+                    {evalItem.evaluatorFeedback}
+                  </Typography>
+                </Box>
+              )}
+
               {/* Reference Answer Guide (if written) */}
               {!isMcq && q.expectedAnswer && (
                 <Box
@@ -515,8 +681,11 @@ export default function AttemptDetailsAndGradingPage() {
                     border: '1px solid #dadce0',
                   }}
                 >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124', mb: 2 }}>
-                    Manual Evaluation & Scoring:
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#202124', mb: 0.5 }}>
+                    Manual Marks & Instructor Override:
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mb: 2 }}>
+                    Assign custom marks or override AI evaluation. Any manual marks saved here are locked and preserved.
                   </Typography>
 
                   <Grid container spacing={2} alignItems="center">

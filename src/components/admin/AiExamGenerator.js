@@ -483,31 +483,60 @@ export default function AiExamGenerator() {
 
               {sourceType === 'pdf' && (
                 <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#202124' }}>
                     Upload PDF Document or Chapter
                   </Typography>
                   <Box
-                    sx={{
-                      border: '1px dashed #dadce0',
-                      borderRadius: 2,
-                      p: 3.5,
-                      textAlign: 'center',
-                      backgroundColor: '#f8f9fa',
-                      cursor: 'pointer',
-                      transition: 'border-color 0.2s ease',
-                      '&:hover': { borderColor: '#1a73e8', backgroundColor: '#f1f3f4' },
-                    }}
                     component="label"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        if (!file.name.toLowerCase().endsWith('.pdf')) {
+                          setError('Please drop a valid PDF file (.pdf)');
+                          return;
+                        }
+                        setPdfFile(file);
+                        setError('');
+                      }
+                    }}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      border: pdfFile ? '1.5px solid #137333' : '1.5px dashed #dadce0',
+                      borderRadius: 2,
+                      py: 4,
+                      px: 3,
+                      textAlign: 'center',
+                      backgroundColor: pdfFile ? '#f6fbf7' : '#f8f9fa',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: '#1a73e8',
+                        backgroundColor: pdfFile ? '#eef7f0' : '#f1f3f4',
+                      },
+                    }}
                   >
                     <input type="file" accept=".pdf" hidden onChange={handlePdfChange} />
-                    <PictureAsPdfOutlinedIcon sx={{ fontSize: 36, color: pdfFile ? '#137333' : '#5f6368', mb: 1 }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#202124' }}>
+                    <PictureAsPdfOutlinedIcon
+                      sx={{ fontSize: 44, color: pdfFile ? '#137333' : '#5f6368', mb: 1.5 }}
+                    />
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#202124' }}>
                       {pdfFile ? pdfFile.name : 'Click to select or drag and drop a PDF file'}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 0.5 }}>
                       {pdfFile
-                        ? `${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze`
-                        : 'Supports textbooks, research papers, and course notes'}
+                        ? `${(pdfFile.size / (1024 * 1024)).toFixed(2)} MB • Ready to analyze (click or drop new file to replace)`
+                        : 'Supports textbooks, research papers, chapters, and course notes (up to 25MB)'}
                     </Typography>
                   </Box>
                 </Box>
@@ -515,27 +544,58 @@ export default function AiExamGenerator() {
 
               {sourceType === 'image' && (
                 <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#202124' }}>
                     Upload Textbook Pages or Hand-Written Notes
                   </Typography>
                   <Box
-                    sx={{
-                      border: '1px dashed #dadce0',
-                      borderRadius: 2,
-                      p: 3.5,
-                      textAlign: 'center',
-                      backgroundColor: '#f8f9fa',
-                      cursor: 'pointer',
-                      transition: 'border-color 0.2s ease',
-                      '&:hover': { borderColor: '#1a73e8', backgroundColor: '#f1f3f4' },
-                    }}
                     component="label"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const files = Array.from(e.dataTransfer.files || []).filter((f) =>
+                        f.type.startsWith('image/')
+                      );
+                      if (files.length > 0) {
+                        setImageFiles(files);
+                        const previews = files.map((f) => URL.createObjectURL(f));
+                        setImagePreviews(previews);
+                        setError('');
+                      } else {
+                        setError('Please drop valid image files (JPG, PNG, WebP).');
+                      }
+                    }}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      border: imageFiles.length > 0 ? '1.5px solid #137333' : '1.5px dashed #dadce0',
+                      borderRadius: 2,
+                      py: 4,
+                      px: 3,
+                      textAlign: 'center',
+                      backgroundColor: imageFiles.length > 0 ? '#f6fbf7' : '#f8f9fa',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: '#1a73e8',
+                        backgroundColor: imageFiles.length > 0 ? '#eef7f0' : '#f1f3f4',
+                      },
+                    }}
                   >
                     <input type="file" accept="image/*" multiple hidden onChange={handleImagesChange} />
-                    <ImageOutlinedIcon sx={{ fontSize: 36, color: imageFiles.length > 0 ? '#137333' : '#5f6368', mb: 1 }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#202124' }}>
+                    <ImageOutlinedIcon
+                      sx={{ fontSize: 44, color: imageFiles.length > 0 ? '#137333' : '#5f6368', mb: 1.5 }}
+                    />
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#202124' }}>
                       {imageFiles.length > 0
-                        ? `${imageFiles.length} photo(s) selected`
+                        ? `${imageFiles.length} photo(s) selected (click to replace)`
                         : 'Click to select or drag and drop photos of pages/notes'}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#5f6368', display: 'block', mt: 0.5 }}>

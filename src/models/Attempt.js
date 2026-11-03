@@ -22,6 +22,10 @@ const QuestionEvaluationSchema = new mongoose.Schema(
       enum: ['auto', 'manual', 'ai'],
       default: 'auto',
     },
+    isManual: {
+      type: Boolean,
+      default: false,
+    },
   },
   { _id: false }
 );

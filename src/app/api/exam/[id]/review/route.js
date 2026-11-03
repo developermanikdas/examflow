@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Examination from '@/models/Examination';
 import Attempt from '@/models/Attempt';
+import { evaluateAttemptWithAI } from '@/services/ai-evaluator-service';
 
 export async function POST(req, { params }) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req, { params }) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // Find the latest completed or evaluated attempt for this candidate
-    const completedAttempt = await Attempt.findOne({
+    let completedAttempt = await Attempt.findOne({
       examinationId: exam._id,
       studentEmail: normalizedEmail,
       status: { $in: ['submitted', 'auto_submitted', 'evaluated'] },
@@ -41,6 +42,16 @@ export async function POST(req, { params }) {
         { error: 'No completed examination attempt found for this email address.' },
         { status: 404 }
       );
+    }
+
+    // If pending or partial evaluation, run AI evaluation automatically so student sees results
+    if (completedAttempt.evaluationStatus !== 'fully_evaluated') {
+      try {
+        await evaluateAttemptWithAI(completedAttempt._id);
+        completedAttempt = await Attempt.findById(completedAttempt._id).lean();
+      } catch (aiErr) {
+        console.error('Auto AI grading during student review lookup failed:', aiErr);
+      }
     }
 
     // Map answers into an object { [questionId]: answer }
