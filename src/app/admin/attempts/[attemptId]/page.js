@@ -23,6 +23,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import { useRouter, useParams } from 'next/navigation';
 
 export default function AttemptDetailsAndGradingPage() {
@@ -37,7 +38,8 @@ export default function AttemptDetailsAndGradingPage() {
   // Local state for grading inputs: { [questionId]: { marks: number, feedback: string, saving: boolean } }
   const [gradingState, setGradingState] = useState({});
 
-  const fetchAttempt = async () => {
+  const fetchAttempt = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const res = await fetch(`/api/admin/attempts/${attemptId}`);
       const data = await res.json();
@@ -57,24 +59,45 @@ export default function AttemptDetailsAndGradingPage() {
             saving: false,
           };
         }
-        setGradingState(initialGrading);
+
+        // When background polling, preserve any ongoing instructor manual typing
+        setGradingState((prev) => {
+          if (isBackground && Object.keys(prev).length > 0) {
+            return prev;
+          }
+          return initialGrading;
+        });
       } else {
-        setSnackbar({ open: true, message: data.error || 'Attempt not found', severity: 'error' });
+        if (!isBackground) {
+          setSnackbar({ open: true, message: data.error || 'Attempt not found', severity: 'error' });
+        }
       }
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to load attempt', severity: 'error' });
+      if (!isBackground) {
+        setSnackbar({ open: true, message: 'Failed to load attempt', severity: 'error' });
+      }
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
+  // Initial load
   useEffect(() => {
     fetchAttempt();
-    const interval = setInterval(() => {
-      fetchAttempt();
-    }, 5000);
-    return () => clearInterval(interval);
   }, [attemptId]);
+
+  // Polling ONLY while the student is actively writing ('in_progress')
+  // Automatically stops completely once the exam is completed or submitted!
+  useEffect(() => {
+    if (!attempt || attempt.status !== 'in_progress') return;
+
+    // Gentle 20-second background heartbeat that doesn't disrupt anyone
+    const interval = setInterval(() => {
+      fetchAttempt(true);
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [attempt?.status, attemptId]);
 
   const handleRunAiEvaluation = async () => {
     setAiEvaluating(true);
@@ -313,6 +336,15 @@ export default function AttemptDetailsAndGradingPage() {
                 sx={{ borderColor: '#dadce0', color: '#1a73e8', backgroundColor: '#ffffff' }}
               >
                 Download Attempt JSON
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<RefreshOutlinedIcon />}
+                onClick={() => fetchAttempt(false)}
+                sx={{ borderColor: '#dadce0', color: '#5f6368', backgroundColor: '#ffffff' }}
+              >
+                Refresh
               </Button>
             </Box>
           </Box>

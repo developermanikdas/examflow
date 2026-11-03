@@ -57,8 +57,8 @@ export default function StudentAttemptsPage() {
     loadExams();
   }, []);
 
-  const fetchAttempts = async () => {
-    setLoading(true);
+  const fetchAttempts = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const q = new URLSearchParams();
       if (search.trim()) q.append('search', search.trim());
@@ -72,19 +72,31 @@ export default function StudentAttemptsPage() {
         setAttempts(data.attempts || []);
       }
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to fetch attempts', severity: 'error' });
+      if (!isBackground) {
+        setSnackbar({ open: true, message: 'Failed to fetch attempts', severity: 'error' });
+      }
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAttempts();
-    const interval = setInterval(() => {
-      fetchAttempts();
-    }, 6000);
-    return () => clearInterval(interval);
   }, [selectedExamId, statusFilter, evalFilter]);
+
+  // Polling ONLY when there are active in-progress attempts
+  // Completely stops when all attempts are finished/submitted!
+  useEffect(() => {
+    const hasActive = attempts.some((a) => a.status === 'in_progress');
+    if (!hasActive) return;
+
+    // Gentle 25-second background interval for active exams
+    const interval = setInterval(() => {
+      fetchAttempts(true);
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [attempts, selectedExamId, statusFilter, evalFilter]);
 
   const handleExportAll = () => {
     if (!selectedExamId) {
