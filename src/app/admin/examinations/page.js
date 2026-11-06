@@ -39,7 +39,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
@@ -321,7 +321,7 @@ export default function ExaminationsListPage() {
       {selectedStudent && (
         <Alert
           severity="info"
-          icon={<PersonOutlineIcon />}
+          icon={<PersonOutlinedIcon />}
           action={
             <Button color="inherit" size="small" onClick={() => setSelectedStudent('')} startIcon={<ClearIcon />}>
               Clear Filter
