@@ -22,6 +22,7 @@ export async function GET(req) {
       completedAttempts,
       pendingEvaluations,
       recentAttempts,
+      attemptedExamIds,
     ] = await Promise.all([
       Examination.countDocuments(),
       Examination.countDocuments({ status: 'published' }),
@@ -38,7 +39,11 @@ export async function GET(req) {
         .sort({ createdAt: -1 })
         .limit(5)
         .lean(),
+      Attempt.distinct('examinationId'),
     ]);
+
+    const attemptedExaminations = attemptedExamIds.length;
+    const unattemptedExaminations = Math.max(0, totalExaminations - attemptedExaminations);
 
     return NextResponse.json({
       success: true,
@@ -47,6 +52,8 @@ export async function GET(req) {
         publishedExaminations,
         draftExaminations,
         deactivatedExaminations,
+        attemptedExaminations,
+        unattemptedExaminations,
         totalAttempts,
         completedAttempts,
         pendingEvaluations,

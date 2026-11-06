@@ -25,6 +25,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import GradingIcon from '@mui/icons-material/Grading';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { useRouter } from 'next/navigation';
 
 export default function StudentAttemptsPage() {
@@ -130,15 +131,26 @@ export default function StudentAttemptsPage() {
           </Typography>
         </Box>
 
-        <Button
-          variant="outlined"
-          startIcon={<FileDownloadOutlinedIcon />}
-          onClick={handleExportAll}
-          disabled={!selectedExamId}
-          sx={{ borderColor: '#dadce0', color: '#1a73e8', backgroundColor: '#ffffff' }}
-        >
-          Export Exam Submissions (JSON)
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            startIcon={<HourglassEmptyIcon />}
+            onClick={() => router.push('/admin/examinations')}
+            sx={{ borderColor: '#dadce0', color: '#b06000', backgroundColor: '#fefaf0' }}
+          >
+            Unattempted Papers ({examinations.filter((e) => !e.isAttempted).length})
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadOutlinedIcon />}
+            onClick={handleExportAll}
+            disabled={!selectedExamId}
+            sx={{ borderColor: '#dadce0', color: '#1a73e8', backgroundColor: '#ffffff' }}
+          >
+            Export Exam Submissions (JSON)
+          </Button>
+        </Box>
       </Box>
 
       {/* Filter Toolbar */}
@@ -177,12 +189,12 @@ export default function StudentAttemptsPage() {
             label="Examination"
             value={selectedExamId}
             onChange={(e) => setSelectedExamId(e.target.value)}
-            sx={{ minWidth: 200 }}
+            sx={{ minWidth: 220 }}
           >
             <MenuItem value="">All Examinations</MenuItem>
             {examinations.map((ex) => (
               <MenuItem key={ex._id} value={ex._id}>
-                {ex.title} ({ex.publicId})
+                {ex.title} ({ex.publicId}) {ex.isAttempted ? `• [Attempted: ${ex.attemptCount}]` : '• [Not Given Yet]'}
               </MenuItem>
             ))}
           </TextField>

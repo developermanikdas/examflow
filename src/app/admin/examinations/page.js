@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
+import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Table from '@mui/material/Table';
@@ -16,6 +17,7 @@ import Paper from '@mui/material/Paper';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -35,14 +37,29 @@ import PublishIcon from '@mui/icons-material/Publish';
 import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import ClearIcon from '@mui/icons-material/Clear';
+import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import { useRouter } from 'next/navigation';
 
 export default function ExaminationsListPage() {
   const router = useRouter();
   const [examinations, setExaminations] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [metrics, setMetrics] = useState({ totalCount: 0, attemptedCount: 0, unattemptedCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [statusTab, setStatusTab] = useState('all');
+
+  // Filters
+  const [attemptFilter, setAttemptFilter] = useState('all'); // 'all' | 'attempted' | 'unattempted'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'published' | 'draft' | 'deactivated'
+  const [selectedStudent, setSelectedStudent] = useState(''); // email of candidate
   const [search, setSearch] = useState('');
+
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [deleteDialog, setDeleteDialog] = useState({ open: false, exam: null, deleting: false });
 
@@ -50,13 +67,17 @@ export default function ExaminationsListPage() {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams();
-      if (statusTab !== 'all') queryParams.append('status', statusTab);
+      if (statusFilter !== 'all') queryParams.append('status', statusFilter);
+      if (attemptFilter !== 'all') queryParams.append('attemptFilter', attemptFilter);
+      if (selectedStudent) queryParams.append('student', selectedStudent);
       if (search.trim()) queryParams.append('search', search.trim());
 
       const res = await fetch(`/api/examinations?${queryParams.toString()}`);
       const data = await res.json();
       if (data.success) {
         setExaminations(data.examinations || []);
+        if (data.students) setStudents(data.students);
+        if (data.metrics) setMetrics(data.metrics);
       }
     } catch (e) {
       setSnackbar({ open: true, message: 'Failed to load examinations', severity: 'error' });
@@ -67,7 +88,7 @@ export default function ExaminationsListPage() {
 
   useEffect(() => {
     fetchExams();
-  }, [statusTab]);
+  }, [attemptFilter, statusFilter, selectedStudent]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -138,6 +159,8 @@ export default function ExaminationsListPage() {
     }
   };
 
+  const activeStudentObj = students.find((s) => s.email === selectedStudent);
+
   return (
     <Box>
       {/* Header */}
@@ -156,7 +179,7 @@ export default function ExaminationsListPage() {
             Examinations
           </Typography>
           <Typography variant="body2" sx={{ color: '#5f6368', mt: 0.5 }}>
-            Create, publish, configure PINs, and generate student access links
+            Track which examinations have been attempted or not given by candidates, configure PINs, and manage papers
           </Typography>
         </Box>
 
@@ -171,33 +194,224 @@ export default function ExaminationsListPage() {
         </Button>
       </Box>
 
-      {/* Tabs & Search Filter Card */}
+      {/* Top Attempt Metric Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={4}>
+          <Card
+            onClick={() => setAttemptFilter('all')}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              cursor: 'pointer',
+              border: attemptFilter === 'all' ? '2px solid #1a73e8' : '1px solid #dadce0',
+              backgroundColor: attemptFilter === 'all' ? '#f8fafd' : '#ffffff',
+              transition: 'all 0.2s ease',
+              '&:hover': { borderColor: '#1a73e8' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#5f6368', textTransform: 'uppercase', fontWeight: 600 }}>
+                  All Examinations
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#202124', mt: 0.5 }}>
+                  {metrics.totalCount}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  backgroundColor: '#e8f0fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#1a73e8',
+                }}
+              >
+                <QuizOutlinedIcon fontSize="small" />
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={4}>
+          <Card
+            onClick={() => setAttemptFilter('attempted')}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              cursor: 'pointer',
+              border: attemptFilter === 'attempted' ? '2px solid #137333' : '1px solid #dadce0',
+              backgroundColor: attemptFilter === 'attempted' ? '#f6fbf7' : '#ffffff',
+              transition: 'all 0.2s ease',
+              '&:hover': { borderColor: '#137333' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#137333', textTransform: 'uppercase', fontWeight: 600 }}>
+                  Attempted (Given)
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#137333', mt: 0.5 }}>
+                  {metrics.attemptedCount}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  backgroundColor: '#e6f4ea',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#137333',
+                }}
+              >
+                <AssignmentTurnedInIcon fontSize="small" />
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} sm={4}>
+          <Card
+            onClick={() => setAttemptFilter('unattempted')}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              cursor: 'pointer',
+              border: attemptFilter === 'unattempted' ? '2px solid #e37400' : '1px solid #dadce0',
+              backgroundColor: attemptFilter === 'unattempted' ? '#fefaf0' : '#ffffff',
+              transition: 'all 0.2s ease',
+              '&:hover': { borderColor: '#e37400' },
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#b06000', textTransform: 'uppercase', fontWeight: 600 }}>
+                  Not Given Yet (Unattempted)
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#e37400', mt: 0.5 }}>
+                  {metrics.unattemptedCount}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  backgroundColor: '#fef7e0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#e37400',
+                }}
+              >
+                <HourglassEmptyIcon fontSize="small" />
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Candidate Filter Alert Banner (if student selected) */}
+      {selectedStudent && (
+        <Alert
+          severity="info"
+          icon={<PersonOutlineIcon />}
+          action={
+            <Button color="inherit" size="small" onClick={() => setSelectedStudent('')} startIcon={<ClearIcon />}>
+              Clear Filter
+            </Button>
+          }
+          sx={{ mb: 3, borderRadius: 2 }}
+        >
+          Filtering examinations for candidate: <strong>{activeStudentObj?.name || selectedStudent}</strong> ({selectedStudent}).
+          Showing papers {attemptFilter === 'attempted' ? 'they have appeared for' : attemptFilter === 'unattempted' ? 'they have NOT given yet' : 'and their attempt records'}.
+        </Alert>
+      )}
+
+      {/* Primary Tabs & Filters Card */}
       <Card sx={{ border: '1px solid #dadce0', borderRadius: 2, mb: 3 }}>
+        {/* Attempt Status Tabs */}
+        <Box sx={{ borderBottom: '1px solid #f1f3f4', px: 2, pt: 1 }}>
+          <Tabs
+            value={attemptFilter}
+            onChange={(e, val) => setAttemptFilter(val)}
+            textColor="primary"
+            indicatorColor="primary"
+            sx={{ minHeight: 46 }}
+          >
+            <Tab
+              label={`All Papers (${metrics.totalCount})`}
+              value="all"
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.9rem' }}
+            />
+            <Tab
+              icon={<CheckCircleIcon sx={{ fontSize: '16px !important', color: '#137333' }} />}
+              iconPosition="start"
+              label={`Attempted (${metrics.attemptedCount})`}
+              value="attempted"
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.9rem' }}
+            />
+            <Tab
+              icon={<HourglassEmptyIcon sx={{ fontSize: '16px !important', color: '#e37400' }} />}
+              iconPosition="start"
+              label={`Not Given Yet (${metrics.unattemptedCount})`}
+              value="unattempted"
+              sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.9rem' }}
+            />
+          </Tabs>
+        </Box>
+
+        {/* Secondary Filter Toolbar */}
         <Box
           sx={{
             p: 2,
             display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'stretch', md: 'center' },
+            flexWrap: 'wrap',
             gap: 2,
-            borderBottom: '1px solid #f1f3f4',
+            alignItems: 'center',
+            backgroundColor: '#ffffff',
           }}
         >
-          <Tabs
-            value={statusTab}
-            onChange={(e, val) => setStatusTab(val)}
-            textColor="primary"
-            indicatorColor="primary"
-            sx={{ minHeight: 44 }}
+          {/* Candidate Dropdown */}
+          <TextField
+            select
+            size="small"
+            label="Candidate / Student"
+            value={selectedStudent}
+            onChange={(e) => setSelectedStudent(e.target.value)}
+            sx={{ minWidth: 230 }}
           >
-            <Tab label="All Papers" value="all" sx={{ textTransform: 'none', fontWeight: 500 }} />
-            <Tab label="Published" value="published" sx={{ textTransform: 'none', fontWeight: 500 }} />
-            <Tab label="Drafts" value="draft" sx={{ textTransform: 'none', fontWeight: 500 }} />
-            <Tab label="Deactivated" value="deactivated" sx={{ textTransform: 'none', fontWeight: 500 }} />
-          </Tabs>
+            <MenuItem value="">All Candidates (Global View)</MenuItem>
+            {students.map((st) => (
+              <MenuItem key={st.email} value={st.email}>
+                {st.name} ({st.email})
+              </MenuItem>
+            ))}
+          </TextField>
 
-          <Box component="form" onSubmit={handleSearchSubmit} sx={{ width: { xs: '100%', md: 320 } }}>
+          {/* Paper Publication Status */}
+          <TextField
+            select
+            size="small"
+            label="Paper Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="all">All Statuses</MenuItem>
+            <MenuItem value="published">Published</MenuItem>
+            <MenuItem value="draft">Drafts</MenuItem>
+            <MenuItem value="deactivated">Deactivated</MenuItem>
+          </TextField>
+
+          {/* Search Field */}
+          <Box component="form" onSubmit={handleSearchSubmit} sx={{ flexGrow: 1, minWidth: 200 }}>
             <TextField
               size="small"
               fullWidth
@@ -217,16 +431,16 @@ export default function ExaminationsListPage() {
 
         {/* Table of Examinations */}
         <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto' }}>
-          <Table sx={{ minWidth: 850 }}>
+          <Table sx={{ minWidth: 900 }}>
             <TableHead sx={{ backgroundColor: '#f8f9fa' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Examination</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Subject</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Questions / Marks</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Duration</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Access PIN</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>PIN</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Attempts</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#5f6368' }}>Student Attempt Status</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 600, color: '#5f6368' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -300,10 +514,93 @@ export default function ExaminationsListPage() {
                       />
                     </TableCell>
 
+                    {/* Student Attempt Status Column */}
                     <TableCell>
-                      <Typography variant="body2">
-                        {exam.attemptCount || 0}
-                      </Typography>
+                      {exam.isAttempted ? (
+                        <Box>
+                          <Chip
+                            icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
+                            label={
+                              exam.attemptCount === 1
+                                ? 'Attempted (1)'
+                                : `Attempted (${exam.attemptCount})`
+                            }
+                            size="small"
+                            sx={{
+                              backgroundColor: '#e6f4ea',
+                              color: '#137333',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                            }}
+                          />
+                          {exam.latestAttempt && (
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{ fontWeight: 600, color: '#202124', display: 'block', lineHeight: 1.2 }}
+                              >
+                                {exam.latestAttempt.studentName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#5f6368', display: 'block' }}>
+                                {exam.latestAttempt.status === 'in_progress'
+                                  ? 'Active Session'
+                                  : `${exam.latestAttempt.obtainedMarks} / ${exam.totalMarks} (${exam.latestAttempt.percentage}%)`}
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="text"
+                                endIcon={<OpenInNewIcon sx={{ fontSize: 13 }} />}
+                                onClick={() => router.push(`/admin/attempts/${exam.latestAttempt.id}`)}
+                                sx={{
+                                  p: 0,
+                                  minWidth: 0,
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  color: '#1a73e8',
+                                  mt: 0.2,
+                                }}
+                              >
+                                View Attempt
+                              </Button>
+                            </Box>
+                          )}
+                        </Box>
+                      ) : (
+                        <Box>
+                          <Chip
+                            icon={<HourglassEmptyIcon sx={{ fontSize: '14px !important' }} />}
+                            label="Not Given Yet"
+                            size="small"
+                            sx={{
+                              backgroundColor: '#fef7e0',
+                              color: '#b06000',
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                            }}
+                          />
+                          <Typography variant="caption" sx={{ color: '#80868b', display: 'block', mt: 0.5 }}>
+                            No submissions
+                          </Typography>
+                          {exam.status === 'published' && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<ContentCopyIcon sx={{ fontSize: 12 }} />}
+                              onClick={() => handleCopyLink(exam.publicId, exam.pin)}
+                              sx={{
+                                p: 0,
+                                minWidth: 0,
+                                textTransform: 'none',
+                                fontSize: '0.75rem',
+                                color: '#1a73e8',
+                                mt: 0.2,
+                              }}
+                            >
+                              Copy Link & PIN
+                            </Button>
+                          )}
+                        </Box>
+                      )}
                     </TableCell>
 
                     <TableCell align="right">
@@ -383,7 +680,11 @@ export default function ExaminationsListPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#5f6368' }}>
-                    No examinations found in this category. Click &quot;Create Examination&quot; to upload your first JSON paper.
+                    {attemptFilter === 'attempted'
+                      ? 'No attempted examinations found with the current filters.'
+                      : attemptFilter === 'unattempted'
+                      ? 'All examinations have been attempted! No unattempted examinations found.'
+                      : 'No examinations found in this category. Click "Create Examination" to publish a new paper.'}
                   </TableCell>
                 </TableRow>
               )}

@@ -119,9 +119,16 @@ export async function createExamination(admin, jsonPayload, customOverrides = {}
 }
 
 /**
- * Retrieve examinations list with attempt metrics
+ * Retrieve examinations list with attempt metrics, student filtering, and attempt status
  */
-export async function getExaminations({ status, search, page = 1, limit = 20 } = {}) {
+export async function getExaminations({
+  status,
+  search,
+  attemptFilter = 'all',
+  studentEmail,
+  page = 1,
+  limit = 50,
+} = {}) {
   await connectToDatabase();
 
   const query = {};
@@ -133,9 +140,48 @@ export async function getExaminations({ status, search, page = 1, limit = 20 } =
     query.$or = [{ title: regex }, { subject: regex }, { publicId: regex }];
   }
 
+  // 1. Fetch distinct students who have attempted any exams
+  const distinctStudents = await Attempt.aggregate([
+    {
+      $group: {
+        _id: '$studentEmail',
+        name: { $first: '$studentName' },
+        totalAttempts: { $sum: 1 },
+        lastAttemptAt: { $max: '$createdAt' },
+      },
+    },
+    { $sort: { lastAttemptAt: -1 } },
+  ]);
+
+  // 2. Identify attempted exam IDs (globally or filtered by student)
+  const attemptMatchCriteria = {};
+  const normalizedEmail = studentEmail ? studentEmail.trim().toLowerCase() : null;
+  if (normalizedEmail) {
+    attemptMatchCriteria.studentEmail = normalizedEmail;
+  }
+
+  const attemptedExamIds = await Attempt.distinct('examinationId', attemptMatchCriteria);
+
+  // 3. Apply attemptFilter: 'attempted' (has attempts) or 'unattempted' (not given yet)
+  if (attemptFilter === 'attempted') {
+    query._id = { $in: attemptedExamIds };
+  } else if (attemptFilter === 'unattempted') {
+    query._id = { $nin: attemptedExamIds };
+  }
+
   const skip = (Math.max(1, page) - 1) * limit;
 
-  const [exams, totalCount] = await Promise.all([
+  // 4. Compute metrics for attempted vs unattempted
+  const baseQuery = {};
+  if (status && ['draft', 'published', 'deactivated'].includes(status)) {
+    baseQuery.status = status;
+  }
+  if (search && search.trim()) {
+    const regex = new RegExp(search.trim(), 'i');
+    baseQuery.$or = [{ title: regex }, { subject: regex }, { publicId: regex }];
+  }
+
+  const [exams, totalCount, attemptedCount, unattemptedCount] = await Promise.all([
     Examination.find(query)
       .select('-rawJson')
       .sort({ createdAt: -1 })
@@ -143,18 +189,40 @@ export async function getExaminations({ status, search, page = 1, limit = 20 } =
       .limit(limit)
       .lean(),
     Examination.countDocuments(query),
+    Examination.countDocuments({ ...baseQuery, _id: { $in: attemptedExamIds } }),
+    Examination.countDocuments({ ...baseQuery, _id: { $nin: attemptedExamIds } }),
   ]);
 
-  // Aggregate attempt statistics for these exams
+  // 5. Aggregate attempt statistics for these exams
   const examIds = exams.map((e) => e._id);
   const attemptStats = await Attempt.aggregate([
     { $match: { examinationId: { $in: examIds } } },
+    { $sort: { createdAt: -1 } },
     {
       $group: {
         _id: '$examinationId',
         totalAttempts: { $sum: 1 },
         completedAttempts: {
           $sum: { $cond: [{ $in: ['$status', ['submitted', 'auto_submitted', 'evaluated']] }, 1, 0] },
+        },
+        candidates: {
+          $addToSet: {
+            name: '$studentName',
+            email: '$studentEmail',
+          },
+        },
+        latestAttempt: {
+          $first: {
+            id: '$_id',
+            studentName: '$studentName',
+            studentEmail: '$studentEmail',
+            status: '$status',
+            obtainedMarks: '$obtainedMarks',
+            totalMarks: '$totalMarks',
+            percentage: '$percentage',
+            submittedAt: '$submittedAt',
+            createdAt: '$createdAt',
+          },
         },
       },
     },
@@ -165,18 +233,41 @@ export async function getExaminations({ status, search, page = 1, limit = 20 } =
     statsMap.set(s._id.toString(), s);
   }
 
+  // 6. Enrich examinations with attempt details
   const enrichedExams = exams.map((exam) => {
-    const st = statsMap.get(exam._id.toString()) || { totalAttempts: 0, completedAttempts: 0 };
+    const st = statsMap.get(exam._id.toString()) || {
+      totalAttempts: 0,
+      completedAttempts: 0,
+      candidates: [],
+      latestAttempt: null,
+    };
+
+    const isAttempted = st.totalAttempts > 0;
+
     return {
       ...exam,
+      isAttempted,
       attemptCount: st.totalAttempts,
       completedAttemptCount: st.completedAttempts,
+      candidates: st.candidates || [],
+      latestAttempt: st.latestAttempt || null,
       questionCount: exam.questions?.length || 0,
     };
   });
 
   return {
     examinations: enrichedExams,
+    students: distinctStudents.map((s) => ({
+      email: s._id,
+      name: s.name,
+      totalAttempts: s.totalAttempts,
+      lastAttemptAt: s.lastAttemptAt,
+    })),
+    metrics: {
+      totalCount,
+      attemptedCount,
+      unattemptedCount,
+    },
     pagination: {
       page: Math.max(1, page),
       limit,

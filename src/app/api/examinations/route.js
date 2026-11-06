@@ -65,10 +65,19 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
+    const attemptFilter = searchParams.get('attemptFilter') || 'all';
+    const student = searchParams.get('student') || undefined;
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const result = await getExaminations({ status, search, page, limit });
+    const result = await getExaminations({
+      status,
+      search,
+      attemptFilter,
+      studentEmail: student,
+      page,
+      limit,
+    });
 
     return NextResponse.json({
       success: true,

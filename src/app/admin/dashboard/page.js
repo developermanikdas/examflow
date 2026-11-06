@@ -22,6 +22,8 @@ import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import AddCircleOutlinedIcon from '@mui/icons-material/AddCircleOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -67,36 +69,42 @@ export default function AdminDashboardPage() {
       value: stats?.totalExaminations || 0,
       icon: <QuizOutlinedIcon sx={{ color: '#1a73e8' }} />,
       bgColor: '#e8f0fe',
+      href: '/admin/examinations',
     },
     {
-      label: 'Published Active',
-      value: stats?.publishedExaminations || 0,
-      icon: <CheckCircleOutlinedIcon sx={{ color: '#137333' }} />,
+      label: 'Attempted Papers',
+      value: stats?.attemptedExaminations || 0,
+      icon: <AssignmentTurnedInIcon sx={{ color: '#137333' }} />,
       bgColor: '#e6f4ea',
+      href: '/admin/examinations',
     },
     {
-      label: 'Draft Papers',
-      value: stats?.draftExaminations || 0,
-      icon: <EditNoteOutlinedIcon sx={{ color: '#e37400' }} />,
+      label: 'Not Given Yet',
+      value: stats?.unattemptedExaminations || 0,
+      icon: <HourglassEmptyIcon sx={{ color: '#e37400' }} />,
       bgColor: '#fef7e0',
+      href: '/admin/examinations',
     },
     {
       label: 'Total Attempts',
       value: stats?.totalAttempts || 0,
       icon: <GroupOutlinedIcon sx={{ color: '#1a73e8' }} />,
       bgColor: '#e8f0fe',
+      href: '/admin/attempts',
     },
     {
       label: 'Completed Attempts',
       value: stats?.completedAttempts || 0,
       icon: <FactCheckOutlinedIcon sx={{ color: '#137333' }} />,
       bgColor: '#e6f4ea',
+      href: '/admin/attempts',
     },
     {
       label: 'Pending Evaluations',
       value: stats?.pendingEvaluations || 0,
       icon: <PendingActionsOutlinedIcon sx={{ color: '#d93025' }} />,
       bgColor: '#fce8e6',
+      href: '/admin/attempts',
     },
   ];
 
@@ -155,13 +163,16 @@ export default function AdminDashboardPage() {
         {kpis.map((kpi, idx) => (
           <Grid item xs={12} sm={6} md={4} key={idx}>
             <Card
+              onClick={() => kpi.href && router.push(kpi.href)}
               sx={{
                 borderRadius: 2,
                 boxShadow: '0 1px 2px 0 rgba(60,64,67,0.1)',
                 border: '1px solid #dadce0',
-                transition: 'box-shadow 0.2s ease',
+                cursor: kpi.href ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
                 '&:hover': {
                   boxShadow: '0 2px 6px 0 rgba(60,64,67,0.15)',
+                  borderColor: '#1a73e8',
                 },
               }}
             >
